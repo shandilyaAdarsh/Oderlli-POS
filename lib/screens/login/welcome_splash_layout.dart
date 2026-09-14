@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class WelcomeSplashLayout extends StatelessWidget {
   final VoidCallback onLoginPressed;
@@ -53,7 +52,8 @@ class WelcomeSplashLayout extends StatelessWidget {
                               const SizedBox(width: 12),
                               Text(
                                 'Orderlyy ',
-                                style: GoogleFonts.plusJakartaSans(
+                                style: TextStyle(
+                                  fontFamily: 'PlusJakartaSans',
                                   fontSize: 28,
                                   fontWeight: FontWeight.w800,
                                   letterSpacing: -0.5,
@@ -62,7 +62,8 @@ class WelcomeSplashLayout extends StatelessWidget {
                               ),
                               Text(
                                 'POS',
-                                style: GoogleFonts.plusJakartaSans(
+                                style: TextStyle(
+                                  fontFamily: 'PlusJakartaSans',
                                   fontSize: 28,
                                   fontWeight: FontWeight.w800,
                                   letterSpacing: -0.5,
@@ -74,7 +75,8 @@ class WelcomeSplashLayout extends StatelessWidget {
                           const SizedBox(height: 16),
                           Text(
                             'Welcome to Orderlyy POS',
-                            style: GoogleFonts.plusJakartaSans(
+                            style: TextStyle(
+                              fontFamily: 'PlusJakartaSans',
                               fontSize: 28,
                               fontWeight: FontWeight.w700,
                               color: isDark ? Colors.white : const Color(0xFF191C1D),
@@ -85,7 +87,8 @@ class WelcomeSplashLayout extends StatelessWidget {
                           const SizedBox(height: 8),
                           Text(
                             'Your Smart Billing Companion',
-                            style: GoogleFonts.plusJakartaSans(
+                            style: TextStyle(
+                              fontFamily: 'PlusJakartaSans',
                               fontSize: 22,
                               fontWeight: FontWeight.w700,
                               color: brandRed,
@@ -138,7 +141,8 @@ class WelcomeSplashLayout extends StatelessWidget {
                         children: [
                           Text(
                             'Serve faster, bill smarter, and manage effortlessly.',
-                            style: GoogleFonts.plusJakartaSans(
+                            style: TextStyle(
+                              fontFamily: 'PlusJakartaSans',
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
                               color: isDark ? Colors.white70 : const Color(0xFF636467),
@@ -160,9 +164,10 @@ class WelcomeSplashLayout extends StatelessWidget {
                                 elevation: 8,
                                 shadowColor: brandRed.withValues(alpha: 0.4),
                               ),
-                              child: Text(
+                              child: const Text(
                                 'Login / Sign In',
-                                style: GoogleFonts.plusJakartaSans(
+                                style: TextStyle(
+                                  fontFamily: 'PlusJakartaSans',
                                   fontSize: 18,
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -172,7 +177,8 @@ class WelcomeSplashLayout extends StatelessWidget {
                           const SizedBox(height: 12),
                           Text(
                             'One POS system for your complete restaurant operations.',
-                            style: GoogleFonts.plusJakartaSans(
+                            style: TextStyle(
+                              fontFamily: 'PlusJakartaSans',
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
                               color: isDark ? Colors.white54 : const Color(0xFF636467),
@@ -223,7 +229,8 @@ class WelcomeSplashLayout extends StatelessWidget {
           Text(
             label,
             textAlign: TextAlign.center,
-            style: GoogleFonts.plusJakartaSans(
+            style: TextStyle(
+              fontFamily: 'PlusJakartaSans',
               fontSize: 13,
               fontWeight: FontWeight.w600,
               height: 1.1,

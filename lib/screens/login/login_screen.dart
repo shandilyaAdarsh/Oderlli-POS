@@ -1,8 +1,7 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import '../../theme/theme.dart';
@@ -40,7 +39,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         SnackBar(
           content: Text(
             ref.read(authProvider).errorMessage ?? 'Invalid organization credentials',
-            style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.w600),
+            style: TextStyle(fontFamily: 'PlusJakartaSans',color: Colors.white, fontWeight: FontWeight.w600),
           ),
           backgroundColor: AppColors.error,
         ),
@@ -103,7 +102,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           const SizedBox(width: 12),
                           Text(
                             'Orderlyy ',
-                            style: GoogleFonts.plusJakartaSans(
+                            style: TextStyle(fontFamily: 'PlusJakartaSans',
                               fontSize: 28.sp,
                               fontWeight: FontWeight.w800,
                               letterSpacing: -0.5,
@@ -112,7 +111,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                           Text(
                             'POS',
-                            style: GoogleFonts.plusJakartaSans(
+                            style: TextStyle(fontFamily: 'PlusJakartaSans',
                               fontSize: 28.sp,
                               fontWeight: FontWeight.w800,
                               letterSpacing: -0.5,
@@ -124,7 +123,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       Gap(16.h),
                       Text(
                         'Organization Sign In',
-                        style: GoogleFonts.plusJakartaSans(
+                        style: TextStyle(fontFamily: 'PlusJakartaSans',
                           fontSize: 24.sp,
                           fontWeight: FontWeight.w700,
                           color: isDark ? Colors.white : const Color(0xFF191C1D),
@@ -133,7 +132,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       Gap(8.h),
                       Text(
                         'Enter your credentials to manage active branches and staff',
-                        style: GoogleFonts.plusJakartaSans(
+                        style: TextStyle(fontFamily: 'PlusJakartaSans',
                           fontSize: 13.sp,
                           color: isDark ? Colors.white54 : Colors.black54,
                         ),
@@ -165,7 +164,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               // Email Field
                               Text(
                                 'Organization Email',
-                                style: GoogleFonts.plusJakartaSans(
+                                style: TextStyle(fontFamily: 'PlusJakartaSans',
                                   fontSize: 13.sp,
                                   fontWeight: FontWeight.w600,
                                   color: isDark ? Colors.white70 : Colors.black87,
@@ -176,7 +175,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 controller: _emailCtrl,
                                 keyboardType: TextInputType.emailAddress,
                                 textInputAction: TextInputAction.next,
-                                style: GoogleFonts.plusJakartaSans(fontSize: 14.sp),
+                                style: TextStyle(fontFamily: 'PlusJakartaSans',fontSize: 14.sp),
                                 decoration: InputDecoration(
                                   hintText: 'name@organization.com',
                                   prefixIcon: const Icon(Icons.email_outlined),
@@ -198,7 +197,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               // Password Field
                               Text(
                                 'Password',
-                                style: GoogleFonts.plusJakartaSans(
+                                style: TextStyle(fontFamily: 'PlusJakartaSans',
                                   fontSize: 13.sp,
                                   fontWeight: FontWeight.w600,
                                   color: isDark ? Colors.white70 : Colors.black87,
@@ -209,7 +208,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 controller: _passwordCtrl,
                                 obscureText: !_isPasswordVisible,
                                 textInputAction: TextInputAction.done,
-                                style: GoogleFonts.plusJakartaSans(fontSize: 14.sp),
+                                style: TextStyle(fontFamily: 'PlusJakartaSans',fontSize: 14.sp),
                                 onFieldSubmitted: (_) => _handleLogin(),
                                 decoration: InputDecoration(
                                   hintText: '••••••••',
@@ -250,7 +249,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                         ),
                                         child: Text(
                                           'Sign In Organization',
-                                          style: GoogleFonts.plusJakartaSans(
+                                          style: TextStyle(fontFamily: 'PlusJakartaSans',
                                             fontSize: 15.sp,
                                             fontWeight: FontWeight.w700,
                                           ),
@@ -278,7 +277,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             children: [
                               Text(
                                 '💡 DEMO ACCOUNTS (SEED DATA)',
-                                style: GoogleFonts.plusJakartaSans(
+                                style: TextStyle(fontFamily: 'PlusJakartaSans',
                                   fontSize: 12.sp,
                                   fontWeight: FontWeight.bold,
                                   color: brandRed,
@@ -307,7 +306,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               Gap(10.h),
                               Text(
                                 'Password: Test@123456',
-                                style: GoogleFonts.plusJakartaSans(
+                                style: TextStyle(fontFamily: 'PlusJakartaSans',
                                   fontSize: 11.sp,
                                   color: isDark ? Colors.white54 : Colors.black54,
                                 ),
@@ -342,7 +341,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           children: [
             Text(
               label,
-              style: GoogleFonts.plusJakartaSans(
+              style: TextStyle(fontFamily: 'PlusJakartaSans',
                 fontSize: 12.sp,
                 fontWeight: FontWeight.w600,
                 color: isDark ? Colors.white70 : Colors.black87,

@@ -1,6 +1,5 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import '../../theme/theme.dart';
@@ -95,7 +94,7 @@ class _BranchSelectionScreenState extends ConsumerState<BranchSelectionScreen> {
                           icon: const Icon(Icons.arrow_back_rounded, color: brandRed),
                           label: Text(
                             'Switch Organization',
-                            style: GoogleFonts.plusJakartaSans(
+                            style: TextStyle(fontFamily: 'PlusJakartaSans',
                               color: brandRed,
                               fontWeight: FontWeight.w600,
                               fontSize: 14.sp,
@@ -116,7 +115,7 @@ class _BranchSelectionScreenState extends ConsumerState<BranchSelectionScreen> {
                           const SizedBox(width: 12),
                           Text(
                             'Orderlyy ',
-                            style: GoogleFonts.plusJakartaSans(
+                            style: TextStyle(fontFamily: 'PlusJakartaSans',
                               fontSize: 28.sp,
                               fontWeight: FontWeight.w800,
                               letterSpacing: -0.5,
@@ -125,7 +124,7 @@ class _BranchSelectionScreenState extends ConsumerState<BranchSelectionScreen> {
                           ),
                           Text(
                             'POS',
-                            style: GoogleFonts.plusJakartaSans(
+                            style: TextStyle(fontFamily: 'PlusJakartaSans',
                               fontSize: 28.sp,
                               fontWeight: FontWeight.w800,
                               letterSpacing: -0.5,
@@ -137,7 +136,7 @@ class _BranchSelectionScreenState extends ConsumerState<BranchSelectionScreen> {
                       Gap(16.h),
                       Text(
                         'Select Active Branch',
-                        style: GoogleFonts.plusJakartaSans(
+                        style: TextStyle(fontFamily: 'PlusJakartaSans',
                           fontSize: 24.sp,
                           fontWeight: FontWeight.w700,
                           color: isDark ? Colors.white : const Color(0xFF191C1D),
@@ -146,7 +145,7 @@ class _BranchSelectionScreenState extends ConsumerState<BranchSelectionScreen> {
                       Gap(8.h),
                       Text(
                         'Choose the store branch to initialize terminal session',
-                        style: GoogleFonts.plusJakartaSans(
+                        style: TextStyle(fontFamily: 'PlusJakartaSans',
                           fontSize: 14.sp,
                           color: isDark ? Colors.white60 : Colors.black54,
                         ),
@@ -179,7 +178,7 @@ class _BranchSelectionScreenState extends ConsumerState<BranchSelectionScreen> {
                                             padding: EdgeInsets.symmetric(horizontal: 16.w),
                                             child: Text(
                                               authState.errorMessage!,
-                                              style: GoogleFonts.plusJakartaSans(
+                                              style: TextStyle(fontFamily: 'PlusJakartaSans',
                                                 fontSize: 14.sp,
                                                 color: isDark ? Colors.white70 : Colors.black87,
                                                 fontWeight: FontWeight.w600,
@@ -196,7 +195,7 @@ class _BranchSelectionScreenState extends ConsumerState<BranchSelectionScreen> {
                                             icon: const Icon(Icons.refresh_rounded, color: Colors.white),
                                             label: Text(
                                               'Try Again',
-                                              style: GoogleFonts.plusJakartaSans(
+                                              style: TextStyle(fontFamily: 'PlusJakartaSans',
                                                 color: Colors.white,
                                                 fontWeight: FontWeight.w600,
                                               ),
@@ -220,7 +219,7 @@ class _BranchSelectionScreenState extends ConsumerState<BranchSelectionScreen> {
                                     ? Center(
                                         child: Text(
                                           'No branches found for this organization.',
-                                          style: GoogleFonts.plusJakartaSans(
+                                          style: TextStyle(fontFamily: 'PlusJakartaSans',
                                             color: isDark ? Colors.white70 : Colors.black54,
                                             fontSize: 16.sp,
                                           ),
@@ -269,7 +268,7 @@ class _BranchSelectionScreenState extends ConsumerState<BranchSelectionScreen> {
                             Gap(10.w),
                             Text(
                               'Initializing branch context...',
-                              style: GoogleFonts.plusJakartaSans(
+                              style: TextStyle(fontFamily: 'PlusJakartaSans',
                                 fontSize: 13.sp,
                                 color: isDark ? Colors.white70 : Colors.black87,
                                 fontWeight: FontWeight.w500,
@@ -399,7 +398,7 @@ class _BranchCardState extends State<_BranchCard> with SingleTickerProviderState
                     children: [
                       Text(
                         widget.name,
-                        style: GoogleFonts.plusJakartaSans(
+                        style: TextStyle(fontFamily: 'PlusJakartaSans',
                           fontSize: 16.sp,
                           fontWeight: FontWeight.w700,
                           color: widget.isDark ? Colors.white : const Color(0xFF191C1D),
@@ -410,7 +409,7 @@ class _BranchCardState extends State<_BranchCard> with SingleTickerProviderState
                       Gap(4.h),
                       Text(
                         'Timezone: ${widget.timezone}',
-                        style: GoogleFonts.plusJakartaSans(
+                        style: TextStyle(fontFamily: 'PlusJakartaSans',
                           fontSize: 13.sp,
                           color: widget.isDark ? Colors.white54 : Colors.black54,
                         ),

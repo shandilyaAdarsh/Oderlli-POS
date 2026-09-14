@@ -1,11 +1,10 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../theme/theme.dart';
 import '../../widgets/widgets.dart';
@@ -446,7 +445,7 @@ class _EmployeeLoginScreenState extends ConsumerState<EmployeeLoginScreen>
                 Gap(8.h),
                 Text(
                   auth.branchName ?? 'Branch Store',
-                  style: GoogleFonts.plusJakartaSans(
+                  style: TextStyle(fontFamily: 'PlusJakartaSans',
                     fontSize: 16.sp,
                     fontWeight: FontWeight.w700,
                     color: const Color(0xFFBA0013),
