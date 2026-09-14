@@ -10,7 +10,6 @@ import '../../providers/providers.dart';
 import '../../widgets/widgets.dart';
 import '../../constants/pos_constants.dart';
 import '../../core/extensions/extensions.dart';
-import '../../routes/app_routes.dart';
 
 /// ─── Light POS Design Palette Colors ─────────────────────────────────────────
 abstract final class LightPOSColors {
@@ -237,22 +236,13 @@ class MenuScreen extends ConsumerWidget {
     // If Portrait view or Narrow screen, wrap in simple vertical column
     if (isVertical) {
       return Scaffold(
-        backgroundColor: LightPOSColors.background,
-        appBar: AppBar(
-          backgroundColor: LightPOSColors.sidebarBg,
-          title: Text('Orderlyy POS', style: LightPOSTypography.headlineMedium),
-          iconTheme: const IconThemeData(color: LightPOSColors.textPrimary),
-          elevation: 0,
-        ),
-        drawer: const Drawer(
-          child: POSSidebar(activeRoute: AppRoutes.menu),
-        ),
+        backgroundColor: Colors.transparent,
         body: SafeArea(child: menuGridContent),
         floatingActionButton: Badge(
           label: Padding(
             padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
             child: Text(
-              '${cartState.totalQty}',
+              '',
               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
             ),
           ),
@@ -270,13 +260,10 @@ class MenuScreen extends ConsumerWidget {
 
     // Tablet-First Landscape Layout
     return Scaffold(
-      backgroundColor: LightPOSColors.background,
+      backgroundColor: Colors.transparent,
       body: Row(
         children: [
-          // ── 1. Widescreen Left Sidebar ─────────────────────────────────────
-          const POSSidebar(activeRoute: AppRoutes.menu),
-          
-          // ── 2. Menu Catalog Workspace (Center) ─────────────────────────────
+          // ── 1. Menu Catalog Workspace (Left) ─────────────────────────────
           Expanded(
             child: menuGridContent,
           ),
@@ -284,7 +271,7 @@ class MenuScreen extends ConsumerWidget {
           // Divider
           Container(width: 1.w, color: LightPOSColors.border),
 
-          // ── 3. Active Checkout Cart Panel (Right) — fixed width for robust landscape proportions
+          // ── 2. Active Checkout Cart Panel (Right) — fixed width for robust landscape proportions
           SizedBox(
             width: AppLayoutConstants.orderPanelWidth.w,
             child: OrderCartPanel(
@@ -299,231 +286,6 @@ class MenuScreen extends ConsumerWidget {
   }
 }
 
-/// ─── Component: POSSidebar ──────────────────────────────────────────────────
-class POSSidebar extends StatelessWidget {
-  const POSSidebar({super.key, required this.activeRoute});
-
-  final String activeRoute;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: AppLayoutConstants.sidebarWidth.w,
-      height: double.infinity,
-      color: LightPOSColors.sidebarBg,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Logo header
-          Padding(
-            padding: EdgeInsets.all(AppSpacing.lg.r),
-            child: Row(
-              children: [
-                Container(
-                  width: 38.w,
-                  height: 38.h,
-                  decoration: BoxDecoration(
-                    color: LightPOSColors.primary,
-                    borderRadius: BorderRadius.circular(AppSpacing.radiusMD.r),
-                  ),
-                  child: const Icon(Icons.restaurant, color: Colors.white, size: 20),
-                ),
-                Gap(AppSpacing.sm.w),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Orderlyy',
-                      style: LightPOSTypography.titleLarge.copyWith(fontWeight: FontWeight.w800),
-                    ),
-                    const StatusIndicator(),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          
-          const Divider(height: 1, color: LightPOSColors.border),
-          Gap(AppSpacing.md.h),
-
-          // Navigation Links
-          Expanded(
-            child: ListView(
-              padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm.w),
-              children: [
-                _buildNavItem(context, 'Dashboard', Icons.dashboard_outlined, AppRoutes.dashboard),
-                _buildNavItem(context, 'Floor Plan', Icons.table_restaurant_outlined, AppRoutes.floor),
-                _buildNavItem(context, 'New Order', Icons.shopping_bag_outlined, AppRoutes.menu),
-                _buildNavItem(context, 'Shifts', Icons.vpn_key_outlined, AppRoutes.shifts),
-                _buildNavItem(context, 'Settings', Icons.settings_outlined, AppRoutes.settings),
-                
-                Gap(AppSpacing.lg.h),
-                const Divider(color: LightPOSColors.border),
-                Gap(AppSpacing.md.h),
-
-                // Metrics Section
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm.w),
-                  child: Text(
-                    'LIVE PERFORMANCE',
-                    style: LightPOSTypography.labelSmall.copyWith(
-                      color: LightPOSColors.textSecondary,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                ),
-                Gap(AppSpacing.xs.h),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm.w),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: _buildMetricTile(Icons.table_restaurant, '4/12', 'Tables'),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Cashier Profile footer
-          const Divider(height: 1, color: LightPOSColors.border),
-          Padding(
-            padding: EdgeInsets.all(AppSpacing.lg.r),
-            child: Consumer(
-              builder: (context, ref, child) {
-                final user = ref.watch(authProvider).user;
-                return Row(
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: LightPOSColors.background,
-                      radius: 20.r,
-                      child: Text(
-                        user?.initials ?? 'ST',
-                        style: LightPOSTypography.titleMedium.copyWith(color: LightPOSColors.primary),
-                      ),
-                    ),
-                    Gap(AppSpacing.sm.w),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            user?.name ?? 'Staff',
-                            style: LightPOSTypography.titleMedium,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          Text(
-                            '${user?.role.label ?? 'Staff'} • Terminal 1',
-                            style: LightPOSTypography.bodySmall,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavItem(BuildContext context, String label, IconData icon, String route) {
-    final isActive = activeRoute == route;
-
-    return Padding(
-      padding: EdgeInsets.only(bottom: AppSpacing.xxs.h),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusMD.r),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(AppSpacing.radiusMD.r),
-          onTap: () {
-            context.go(route);
-            if (Scaffold.maybeOf(context)?.isDrawerOpen ?? false) {
-              Navigator.pop(context);
-            }
-          },
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm.w, vertical: AppSpacing.sm.h),
-            decoration: BoxDecoration(
-              color: isActive ? LightPOSColors.primary.withValues(alpha: 0.08) : Colors.transparent,
-              borderRadius: BorderRadius.circular(AppSpacing.radiusMD.r),
-            ),
-            child: Row(
-              children: [
-                // Left indicator bar
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  width: 3.w,
-                  height: 18.h,
-                  decoration: BoxDecoration(
-                    color: isActive ? LightPOSColors.primary : Colors.transparent,
-                    borderRadius: BorderRadius.circular(2.r),
-                  ),
-                ),
-                Gap(isActive ? AppSpacing.xs.w : AppSpacing.xs.w + 3.w),
-                Icon(
-                  icon,
-                  color: isActive ? LightPOSColors.primary : LightPOSColors.textSecondary,
-                  size: 20.sp,
-                ),
-                Gap(AppSpacing.sm.w),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: LightPOSTypography.bodyMedium.copyWith(
-                      color: isActive ? LightPOSColors.primary : LightPOSColors.textSecondary,
-                      fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMetricTile(IconData icon, String value, String label) {
-    return Container(
-      padding: EdgeInsets.all(AppSpacing.xs.r),
-      decoration: BoxDecoration(
-        color: LightPOSColors.primary.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(AppSpacing.radiusLG.r),
-        border: Border.all(color: LightPOSColors.primary.withValues(alpha: 0.1)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: LightPOSColors.primary, size: 14.sp),
-          Gap(AppSpacing.xxs.h),
-          Text(
-            value,
-            style: LightPOSTypography.titleMedium,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          Text(
-            label,
-            style: LightPOSTypography.bodySmall.copyWith(fontSize: 9.sp),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 /// ─── Component: POSHeader ───────────────────────────────────────────────────
 class POSHeader extends StatelessWidget {
@@ -546,23 +308,12 @@ class POSHeader extends StatelessWidget {
           runSpacing: 4.h,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            _buildMetadataItem(Icons.devices_other, 'Terminal 1'),
-            _buildDotSeparator(),
-            Consumer(
-              builder: (context, ref, child) {
-                final user = ref.watch(authProvider).user;
-                return _buildMetadataItem(
-                  Icons.person_outline,
-                  user?.name ?? 'Staff',
-                );
-              },
-            ),
-            _buildDotSeparator(),
+
             _buildMetadataItem(
               Icons.table_bar_outlined,
               isCounterOrder
                   ? PosConstants.counterTableName
-                  : (activeTable != null ? 'Table ${activeTable.number}' : 'Quick Order'),
+                  : (activeTable != null ? '${activeTable.tableName}' : 'Quick Order'),
             ),
             if (hasTable && !isCounterOrder && activeTable != null) ...[
               _buildDotSeparator(),
@@ -1099,7 +850,7 @@ class _OrderCartPanelState extends ConsumerState<OrderCartPanel> {
                     widget.isCounterOrder
                         ? '${PosConstants.counterTableName} Checkout'
                         : (widget.activeTable != null
-                            ? 'Table ${widget.activeTable.number} Checkout'
+                            ? '${widget.activeTable.tableName} Checkout'
                             : 'Quick Walk-In Checkout'),
                     style: LightPOSTypography.bodySmall,
                   ),
@@ -1233,83 +984,21 @@ class _OrderCartPanelState extends ConsumerState<OrderCartPanel> {
             FinancialSummaryCard(cartState: widget.cartState),
             Gap(AppSpacing.md.h),
 
-            // Checkout CTA buttons
-            Row(
-              children: [
-                Expanded(
-                  child: POSActionButton(
-                    onPressed: () async {
-                      // Guard: need at least one item
-                      if (widget.cartState.items.isEmpty) return;
-
-                      final sessionIds = ref.read(cartSessionIdsProvider);
-                      final tableId = ref.read(cartSelectedTableProvider) ??
-                          ref.read(activeTableIdProvider);
-
-                      debugPrint('[DEBUG] menu_screen SEND KITCHEN: tableId=$tableId, cartId=${widget.cartState.backendCartId}');
-
-                      if (tableId == null) {
-                        context.showErrorSnack('No table selected.');
-                        return;
-                      }
-
-                      final cartId = widget.cartState.backendCartId;
-                      // Counter orders use local mock cart — no backend cartId needed
-
-                      try {
-                        debugPrint('[DEBUG] menu_screen invoking ordersProvider.notifier.checkout...');
-                        await ref.read(ordersProvider.notifier).checkout(
-                          tenantId: sessionIds.tenantId ?? '',
-                          branchId: sessionIds.branchId ?? '',
-                          tableId: tableId,
-                          cartId: cartId ?? '',   // empty string for counter — backend ignores
-                          expectedCartRevision: widget.cartState.backendCartVersionNum,
-                          orderNotes: _notesController.text.isEmpty
-                              ? null
-                              : _notesController.text,
-                        );
-
-                        ref.read(posCartProvider.notifier).clear();
-                        ref.read(cartSelectedTableProvider.notifier).state = null;
-                        ref.read(activeTableIdProvider.notifier).state = null;
-                        _notesController.clear();
-
-                        if (context.mounted) {
-                          context.showSuccessSnack('Order dispatched to KDS!');
-                          context.go('/floor');
-                        }
-                      } catch (e) {
-                        if (context.mounted) {
-                          context.showErrorSnack(e.toString());
-                        }
-                      }
-                    },
-                    text: 'SEND KITCHEN',
-                    icon: Icons.soup_kitchen_outlined,
-                    backgroundColor: Colors.white,
-                    foregroundColor: LightPOSColors.primary,
-                    borderColor: LightPOSColors.primary,
-                  ),
-                ),
-                Gap(AppSpacing.sm.w),
-                Expanded(
-                  child: POSActionButton(
-                    onPressed: () {
-                      // Set notes before navigating
-                      if (_notesController.text.isNotEmpty) {
-                        for (final item in widget.cartState.items) {
-                          ref.read(posCartProvider.notifier).updateNotes(item.menuItem.id, _notesController.text);
-                        }
-                      }
-                      context.go('/cart');
-                    },
-                    text: 'CHECKOUT',
-                    icon: Icons.shopping_cart_checkout_outlined,
-                    backgroundColor: LightPOSColors.primary,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-              ],
+            // Checkout CTA button
+            POSActionButton(
+              onPressed: () {
+                // Set notes before navigating
+                if (_notesController.text.isNotEmpty) {
+                  for (final item in widget.cartState.items) {
+                    ref.read(posCartProvider.notifier).updateNotes(item.menuItem.id, _notesController.text);
+                  }
+                }
+                context.go('/cart');
+              },
+              text: 'CHECKOUT',
+              icon: Icons.shopping_cart_checkout_outlined,
+              backgroundColor: LightPOSColors.primary,
+              foregroundColor: Colors.white,
             ),
           ],
         ],

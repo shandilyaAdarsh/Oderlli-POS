@@ -118,7 +118,7 @@ class TableRepository {
         mappedTables.add(
           TableModel(
             id: t.id,
-            number: _parseTableNumber(t.tableNumber, i),
+            tableName: t.displayName ?? t.tableNumber,
             capacity: t.capacity,
             status: _mapRuntimeState(t.runtimeState),
             guestCount: (json['guest_count'] as num?)?.toInt() ?? 0,
@@ -154,18 +154,7 @@ class TableRepository {
     };
   }
 
-  int _parseTableNumber(String tableNum, int index) {
-    final parsed = int.tryParse(tableNum);
-    if (parsed != null) return parsed;
 
-    final digits = RegExp(r'\d+').firstMatch(tableNum)?.group(0);
-    if (digits != null) {
-      final parsedDigits = int.tryParse(digits);
-      if (parsedDigits != null) return parsedDigits;
-    }
-
-    return index + 1;
-  }
 
   Future<void> vacateTable(String tableId) async {
     try {

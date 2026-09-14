@@ -127,7 +127,7 @@ void main() {
     late CartRepository repository;
 
     setUp(() {
-      repository = CartRepository(MockCartService(), MockConnectivityService());
+      repository = CartRepository(MockCartService(), MockConnectivityService(), (id) => id == '00000000-0000-0000-0000-000000000001');
     });
 
     test('Cart creation and OCC version checks', () async {
@@ -175,7 +175,7 @@ void main() {
   group('CartRepository Counter Table Bypass Tests', () {
     test('Counter table bypasses QR session resolution and uses in-memory token', () async {
       final mockService = CounterBypassCartService();
-      final repository = CartRepository(mockService, LiveConnectivityService());
+      final repository = CartRepository(mockService, LiveConnectivityService(), (id) => id == '00000000-0000-0000-0000-000000000001');
 
       final cart = await repository.getCart('tenant-1', 'branch-1', '00000000-0000-0000-0000-000000000001');
 
@@ -230,7 +230,7 @@ void main() {
     POSCartNotifier buildNotifier() {
       return POSCartNotifier(
         ref: null,
-        repository: CartRepository(MockCartService(), MockConnectivityService()),
+        repository: CartRepository(MockCartService(), MockConnectivityService(), (id) => id == '00000000-0000-0000-0000-000000000001'),
         tenantId: 'tenant-1',
         branchId: 'branch-1',
         tableId: 'table-1',
@@ -273,7 +273,7 @@ void main() {
 
       final stubDioClient = StubDioClient(dio);
       final mockService = FailureCartService(stubDioClient);
-      final repository = CartRepository(mockService, LiveConnectivityService());
+      final repository = CartRepository(mockService, LiveConnectivityService(), (id) => id == '00000000-0000-0000-0000-000000000001');
 
       // First call should trigger resolveQrSessionForTable and fail
       dynamic firstError;
@@ -322,7 +322,7 @@ void main() {
 
     test('401 error on cached token evicts cache and retries once', () async {
       final mockService = RetryCartService();
-      final repository = CartRepository(mockService, LiveConnectivityService());
+      final repository = CartRepository(mockService, LiveConnectivityService(), (id) => id == '00000000-0000-0000-0000-000000000001');
 
       mockService.getCartStatusCodes = [200, 401, 200];
 
@@ -341,7 +341,7 @@ void main() {
 
     test('If retried cart operation also fails, it propagates the error and does not loop', () async {
       final mockService = RetryCartService();
-      final repository = CartRepository(mockService, LiveConnectivityService());
+      final repository = CartRepository(mockService, LiveConnectivityService(), (id) => id == '00000000-0000-0000-0000-000000000001');
 
       mockService.getCartStatusCodes = [200, 401, 401];
 
@@ -362,7 +362,7 @@ void main() {
 
     test('If token was not cached, a 401 error does not trigger retry', () async {
       final mockService = RetryCartService();
-      final repository = CartRepository(mockService, LiveConnectivityService());
+      final repository = CartRepository(mockService, LiveConnectivityService(), (id) => id == '00000000-0000-0000-0000-000000000001');
 
       mockService.getCartStatusCodes = [401];
 
@@ -379,7 +379,7 @@ void main() {
 
     test('If re-resolution itself throws 401, it propagates the failure without looping', () async {
       final mockService = RetryCartService();
-      final repository = CartRepository(mockService, LiveConnectivityService());
+      final repository = CartRepository(mockService, LiveConnectivityService(), (id) => id == '00000000-0000-0000-0000-000000000001');
 
       mockService.getCartStatusCodes = [200, 401];
       // Prime the cache

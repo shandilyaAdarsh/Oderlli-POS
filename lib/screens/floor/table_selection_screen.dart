@@ -4,10 +4,10 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../routes/app_routes.dart';
-import '../../constants/pos_constants.dart';
 import '../../providers/active_bill_provider.dart';
 import '../../providers/pos_cart_provider.dart';
 import '../../providers/table_provider.dart';
+import '../../models/pos_models.dart';
 import '../../theme/theme.dart';
 import '../../widgets/widgets.dart';
 
@@ -31,35 +31,7 @@ class TableSelectionScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(
-              width: double.infinity,
-              height: 60,
-              child: ElevatedButton.icon(
-                icon: const Icon(Icons.storefront),
-                label: const Text('COUNTER / WALK-IN'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                onPressed: () {
-                  final counterTable = ref.read(counterTableProvider);
-                  if (counterTable != null) {
-                    ref.read(cartSelectedTableProvider.notifier).state = counterTable.id;
-                    ref.read(activeTableIdProvider.notifier).state = counterTable.id;
-                    context.go(AppRoutes.posMenu);
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('No counter table found in this branch.')),
-                    );
-                  }
-                },
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text('Dining Tables', style: AppTextStyles.titleLarge),
+            Text('Select a Dining Table', style: AppTextStyles.titleLarge),
             SizedBox(height: 12.h),
             Expanded(
               child: tablesAsync.isLoading && tables.isEmpty
@@ -97,11 +69,15 @@ class TableSelectionScreen extends ConsumerWidget {
                                   table: table,
                                   isSelected: false,
                                   onTap: () {
-                                    ref.read(cartSelectedTableProvider.notifier).state =
-                                        table.id;
-                                    ref.read(activeTableIdProvider.notifier).state =
-                                        table.id;
-                                    context.go(AppRoutes.posMenu);
+                                    if (table.status != POSTableStatus.available) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('Table is not available for a new order.')),
+                                      );
+                                      return;
+                                    }
+                                    ref.read(cartSelectedTableProvider.notifier).state = table.id;
+                                    ref.read(activeTableIdProvider.notifier).state = table.id;
+                                    context.push(AppRoutes.customerDetails);
                                   },
                                 );
                               },

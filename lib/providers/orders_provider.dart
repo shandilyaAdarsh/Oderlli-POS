@@ -1,7 +1,8 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../constants/pos_constants.dart';
 import '../models/models.dart';
+import 'customer_provider.dart';
 import '../core/repositories/order_repository.dart';
 import '../core/repositories/cart_repository.dart';
 import 'pos_cart_provider.dart';
@@ -22,67 +23,73 @@ final orderRepositoryProvider = Provider<OrderRepository>((ref) {
 // ─── Orders Provider & Notifier ───────────────────────────────────────────────
 
 final ordersProvider =
-    StateNotifierProvider<OrdersNotifier, List<Order>>(
-  (ref) {
-    final repo = ref.watch(orderRepositoryProvider);
-    return OrdersNotifier(ref, repo);
-  },
-);
+    AsyncNotifierProvider<OrdersNotifier, List<Order>>(OrdersNotifier.new);
 
-class OrdersNotifier extends StateNotifier<List<Order>> {
-  final Ref ref;
-  final OrderRepository repository;
+class OrdersNotifier extends AsyncNotifier<List<Order>> {
+  OrderRepository get repository => ref.watch(orderRepositoryProvider);
 
-  OrdersNotifier(this.ref, this.repository) : super([]) {
-    // Proactively fetch orders when initialized
-    fetchOrders();
+  @override
+  FutureOr<List<Order>> build() async {
+    return _fetchOrders();
   }
 
-  Future<void> fetchOrders() async {
-    if (ref.read(authProvider).user == null) return;
+  Future<List<Order>> _fetchOrders() async {
+    if (ref.read(authProvider).user == null) return [];
     final sessionIds = ref.read(cartSessionIdsProvider);
     final branchId = sessionIds.branchId;
     if (branchId == null) {
       throw Exception('No branchId context configured. Please verify your login session.');
     }
 
+    final summaryList = await repository.getOrders(branchId: branchId);
+    final tables = ref.read(posTablesProvider).valueOrNull ?? [];
+
+    return summaryList.map((summary) {
+      final tableNum = tables.firstWhere(
+        (t) => t.id == summary.tableId,
+        orElse: () => TableModel(
+          id: summary.tableId,
+          tableName: '1',
+          capacity: 4,
+          status: POSTableStatus.available,
+          sectionName: '',
+          floorName: '',
+        ),
+      ).tableName;
+
+      return Order(
+        id: summary.id,
+        tableId: summary.tableId,
+        tableNumber: int.tryParse(tableNum) ?? 0,
+        items: summary.items.map((i) => OrderItem(
+          id: '',
+          menuItemId: '',
+          itemNameSnapshot: i.name,
+          unitPriceMinor: 0,
+          quantity: i.qty,
+        )).toList(),
+        createdAt: summary.createdAt,
+        status: summary.status,
+        notes: summary.orderNotes,
+        grandTotalMinor: summary.grandTotalMinor,
+        customerPaymentIntent: summary.customerPaymentIntent,
+      );
+    }).toList();
+  }
+
+  Future<void> fetchOrders() async {
+    state = const AsyncLoading();
     try {
-      final summaryList = await repository.getOrders(branchId: branchId);
-      final tables = ref.read(posTablesProvider).valueOrNull ?? [];
-
-      final orderList = summaryList.map((summary) {
-        final tableNum = tables.firstWhere(
-          (t) => t.id == summary.tableId,
-          orElse: () => TableModel(
-            id: summary.tableId,
-            number: 1,
-            capacity: 4,
-            status: POSTableStatus.available,
-            sectionName: '',
-            floorName: '',
-          ),
-        ).number;
-
-        return Order(
-          id: summary.id,
-          tableId: summary.tableId,
-          tableNumber: tableNum,
-          items: const [], // Summary list has empty items
-          createdAt: summary.createdAt,
-          status: summary.status,
-          notes: summary.orderNotes,
-          grandTotalMinor: summary.grandTotalMinor,
-        );
-      }).toList();
-
-      state = orderList;
-    } catch (e) {
+      final orderList = await _fetchOrders();
+      state = AsyncData(orderList);
+    } catch (e, stackTrace) {
+      state = AsyncError(e, stackTrace);
       if (kDebugMode) {
         debugPrint('[OrdersNotifier] fetchOrders failed: $e');
       }
-      rethrow;
     }
   }
+// (Methods moved above/replaced)
 
   Future<Order> checkout({
     required String tenantId,
@@ -133,6 +140,8 @@ class OrdersNotifier extends StateNotifier<List<Order>> {
         debugPrint('[DEBUG] Sync completed. finalCartId=$finalCartId, versionNum=$finalCartRevision');
       }
 
+      final customerDetails = ref.read(customerDetailsProvider);
+
       debugPrint('[DEBUG] Proceeding to repository checkout with finalCartId=$finalCartId');
       // 2. Perform checkout REST API request via repository
       final newOrder = await repository.checkout(
@@ -142,6 +151,8 @@ class OrdersNotifier extends StateNotifier<List<Order>> {
         cartId: finalCartId,
         expectedCartRevision: finalCartRevision,
         orderNotes: orderNotes,
+        customerName: customerDetails.name,
+        customerPhone: customerDetails.phone,
       );
 
       // 3. Clear/Refresh active cart
@@ -160,38 +171,40 @@ class OrdersNotifier extends StateNotifier<List<Order>> {
   }
 
   void addOrder(Order order) {
-    state = [...state, order];
+    final oldData = state.valueOrNull ?? [];
+    state = AsyncData([...oldData, order]);
   }
 
   void updateStatus(String orderId, OrderStatus status) {
-    state = [
-      for (final o in state)
-        if (o.id == orderId)
-          o.copyWith(status: status, updatedAt: DateTime.now())
-        else
-          o,
-    ];
+    final oldData = state.valueOrNull ?? [];
+    final idx = oldData.indexWhere((o) => o.id == orderId);
+    if (idx != -1) {
+      final updated = List<Order>.from(oldData);
+      updated[idx] = updated[idx].copyWith(status: status, updatedAt: DateTime.now());
+      state = AsyncData(updated);
+    }
   }
 
   void addItemToOrder(String orderId, OrderItem item) {
-    state = [
-      for (final o in state)
-        if (o.id == orderId)
-          o.copyWith(items: [...o.items, item])
-        else
-          o,
-    ];
+    final oldData = state.valueOrNull ?? [];
+    final idx = oldData.indexWhere((o) => o.id == orderId);
+    if (idx != -1) {
+      final updated = List<Order>.from(oldData);
+      updated[idx] = updated[idx].copyWith(items: [...updated[idx].items, item]);
+      state = AsyncData(updated);
+    }
   }
 
   void removeItemFromOrder(String orderId, String itemId) {
-    state = [
-      for (final o in state)
-        if (o.id == orderId)
-          o.copyWith(
-              items: o.items.where((i) => i.id != itemId).toList())
-        else
-          o,
-    ];
+    final oldData = state.valueOrNull ?? [];
+    final idx = oldData.indexWhere((o) => o.id == orderId);
+    if (idx != -1) {
+      final updated = List<Order>.from(oldData);
+      updated[idx] = updated[idx].copyWith(
+        items: updated[idx].items.where((i) => i.id != itemId).toList(),
+      );
+      state = AsyncData(updated);
+    }
   }
 
   void cancelOrder(String orderId) {
@@ -203,7 +216,8 @@ class OrdersNotifier extends StateNotifier<List<Order>> {
 
 /// Active orders (not completed / cancelled).
 final activeOrdersProvider = Provider<List<Order>>((ref) {
-  return ref.watch(ordersProvider).where((o) {
+  final list = ref.watch(ordersProvider).valueOrNull ?? [];
+  return list.where((o) {
     return o.status != OrderStatus.served &&
         o.status != OrderStatus.completed &&
         o.status != OrderStatus.cancelled;
@@ -213,5 +227,6 @@ final activeOrdersProvider = Provider<List<Order>>((ref) {
 /// Orders by status.
 final ordersByStatusProvider =
     Provider.family<List<Order>, OrderStatus>((ref, status) {
-  return ref.watch(ordersProvider).where((o) => o.status == status).toList();
+  final list = ref.watch(ordersProvider).valueOrNull ?? [];
+  return list.where((o) => o.status == status).toList();
 });

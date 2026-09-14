@@ -3,13 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../theme/theme.dart';
 import '../../models/models.dart';
 import '../../providers/providers.dart';
 import '../../widgets/widgets.dart';
-import '../../constants/pos_constants.dart';
 import '../../core/extensions/extensions.dart';
 import '../../providers/inactivity_provider.dart';
 
@@ -21,7 +19,6 @@ class FloorScreen extends ConsumerStatefulWidget {
 }
 
 class _FloorScreenState extends ConsumerState<FloorScreen> {
-  TableModel? _selectedTable;
   Timer? _refreshTimer;
 
   void _startRefreshTimer(int seconds) {
@@ -52,29 +49,6 @@ class _FloorScreenState extends ConsumerState<FloorScreen> {
     super.dispose();
   }
 
-  void _selectTableForOrdering(String tableId) {
-    ref.read(activeTableIdProvider.notifier).state = tableId;
-    ref.read(cartSelectedTableProvider.notifier).state = tableId;
-  }
-
-  void _startCounterOrder() {
-    final branchId = ref.read(authProvider).branchId;
-    if (branchId == null) return;
-
-    final counterTable = ref.read(counterTableProvider);
-    if (counterTable == null) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No counter table found in this branch.')),
-        );
-      }
-      return;
-    }
-    
-    _selectTableForOrdering(counterTable.id);
-    setState(() => _selectedTable = null);
-    context.go('/menu');
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -90,11 +64,13 @@ class _FloorScreenState extends ConsumerState<FloorScreen> {
     final tables = ref.watch(liveTableStatusProvider);
     // Filter by selected section (mirrors posFilteredTablesProvider logic but on enriched tables)
     final selectedSection = ref.watch(posSelectedSectionProvider);
+    final counterTable = ref.watch(counterTableProvider);
     final filteredTables = selectedSection == null
-        ? tables
-        : tables.where((t) => t.sectionName == selectedSection).toList();
+        ? tables.where((t) => t.id != counterTable?.id).toList()
+        : tables.where((t) => t.sectionName == selectedSection && t.id != counterTable?.id).toList();
 
-    final sections = ref.watch(posTableSectionsProvider);
+    // sections is watched to allow posTableSectionsProvider to rebuild on change
+    ref.watch(posTableSectionsProvider);
     // Calculate operational summary stats dynamically
     final allTables = tables; // liveTableStatusProvider already returns all tables enriched
     final occupiedCount = allTables.where((t) => t.status == POSTableStatus.occupied).length;
@@ -119,32 +95,7 @@ class _FloorScreenState extends ConsumerState<FloorScreen> {
             child: Row(
               children: [
                 Text('Floor Overview', style: AppTextStyles.headlineMedium),
-                Gap(32.w),
-                // Section segmented chips wrapped in horizontal scroll view to prevent overflow
-                Expanded(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        _SectionSegmentChip(
-                          label: 'ALL SECTIONS',
-                          isSelected: selectedSection == null,
-                          onTap: () => ref.read(posSelectedSectionProvider.notifier).state = null,
-                        ),
-                        Gap(12.w),
-                        ...sections.map((s) => Padding(
-                              padding: EdgeInsets.only(right: 12.w),
-                              child: _SectionSegmentChip(
-                                label: s.toUpperCase(),
-                                isSelected: selectedSection == s,
-                                onTap: () => ref.read(posSelectedSectionProvider.notifier).state = s,
-                              ),
-                            )),
-                      ],
-                    ),
-                  ),
-                ),
-                Gap(16.w),
+                const Spacer(),
                 IconButton(
                   icon: const Icon(Icons.refresh, color: AppColors.textSecondary),
                   tooltip: 'Refresh Floor Plan',
@@ -201,61 +152,9 @@ class _FloorScreenState extends ConsumerState<FloorScreen> {
             ),
           ),
 
-          // ── 3. Counter / Walk-in shortcut ─────────────────────────────────
-          Padding(
-            padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 0),
-            child: SizedBox(
-              width: double.infinity,
-              height: 56.h,
-              child: ElevatedButton.icon(
-                onPressed: _startCounterOrder,
-                icon: const Icon(Icons.storefront),
-                label: const Text('COUNTER / WALK-IN'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.cash,
-                  foregroundColor: Colors.white,
-                  textStyle: AppTextStyles.labelLarge,
-                ),
-              ),
-            ),
-          ),
 
-          // ── 4. Main Dining Floor Plan Grid & Quick Actions ────────────────
           Expanded(
-            child: context.isVerticalLayout
-                ? Column(
-                    children: [
-                      // Dining Room Grid (top panel)
-                      Expanded(
-                        flex: 6,
-                        child: _buildGrid(filteredTables),
-                      ),
-                      // Horizontal Divider
-                      Container(height: 1.h, color: AppColors.border),
-                      // Quick Actions (bottom panel)
-                      Expanded(
-                        flex: 4,
-                        child: _buildQuickActionsPanel(ref),
-                      ),
-                    ],
-                  )
-                : Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Dining Room Grid (left panel)
-                      Expanded(
-                        flex: 7,
-                        child: _buildGrid(filteredTables),
-                      ),
-                      // Divider line
-                      Container(width: 1.w, color: AppColors.border),
-                      // Quick Actions (right panel)
-                      Expanded(
-                        flex: 3,
-                        child: _buildQuickActionsPanel(ref),
-                      ),
-                    ],
-                  ),
+            child: _buildGrid(filteredTables),
           ),
         ],
       ),
@@ -321,15 +220,10 @@ class _FloorScreenState extends ConsumerState<FloorScreen> {
           itemCount: tables.length,
           itemBuilder: (context, i) {
             final table = tables[i];
-            final isSelected = _selectedTable?.id == table.id;
             return POSTableCard(
               table: table,
-              isSelected: isSelected,
-              onTap: () {
-                setState(() {
-                  _selectedTable = isSelected ? null : table;
-                });
-              },
+              isSelected: false,
+              onTap: () {},
             );
           },
         );
@@ -337,178 +231,9 @@ class _FloorScreenState extends ConsumerState<FloorScreen> {
     );
   }
 
-  Widget _buildQuickActionsPanel(WidgetRef ref) {
-    return Container(
-      color: AppColors.sidebarBg,
-      padding: EdgeInsets.all(16.r),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Quick Actions', style: AppTextStyles.titleLarge),
-          Gap(16.h),
-          if (_selectedTable != null) ...[
-            _buildSelectedTablePanel(ref),
-          ] else ...[
-            const Expanded(
-              child: Center(
-                child: EmptyStateWidget(
-                  icon: Icons.ads_click,
-                  title: 'No Table Selected',
-                  description: 'Select a dining table from the floor grid, or use Counter / Walk-in for takeout orders.',
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
 
-  Widget _buildSelectedTablePanel(WidgetRef ref) {
-    final table = _selectedTable!;
-    return Expanded(
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-          // Brief table status card
-          POSCard(
-            backgroundColor: AppColors.surface,
-            child: Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: table.status.color.withValues(alpha: 0.15),
-                  child: Text('${table.number}', style: AppTextStyles.labelLarge.copyWith(color: table.status.color)),
-                ),
-                Gap(16.w),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Table ${table.number}', style: AppTextStyles.titleMedium),
-                    Text(table.status.label.toUpperCase(), style: AppTextStyles.labelSmall.copyWith(color: table.status.color)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Gap(24.h),
-          SectionHeader(title: 'Available Operations'),
-          Gap(16.h),
-          // Actions depending on table state
-          if (table.status == POSTableStatus.available) ...[
-            PrimaryButton(
-              onPressed: () {
-                final currentUserName = ref.read(authProvider).user?.name ?? 'Staff';
-                ref.read(posTablesProvider.notifier).seatTable(table.id, 2, currentUserName);
-                _selectTableForOrdering(table.id);
-                setState(() => _selectedTable = null);
-              },
-              text: 'SEAT GUESTS',
-              icon: Icons.person_add_alt,
-            ),
-            Gap(12.h),
-            SecondaryButton(
-              onPressed: () {
-                final currentUserName = ref.read(authProvider).user?.name ?? 'Staff';
-                ref.read(posTablesProvider.notifier).seatTable(table.id, 2, currentUserName);
-                _selectTableForOrdering(table.id);
-                context.go('/menu');
-              },
-              text: 'OPEN MENU BOOK',
-              icon: Icons.menu_book,
-            ),
-          ] else ...[
-            PrimaryButton(
-              onPressed: () {
-                // Open menu / add items for this table
-                _selectTableForOrdering(table.id);
-                context.go('/menu');
-              },
-              text: 'MANAGE ORDER ITEMS',
-              icon: Icons.restaurant_menu,
-            ),
-            Gap(12.h),
-            if (ref.read(authProvider).user?.role != UserRole.server) ...[
-              if (table.status == POSTableStatus.paymentPending) ...[
-                PrimaryButton(
-                  onPressed: () {
-                    // Direct route to checkout payments
-                    _selectTableForOrdering(table.id);
-                    context.go('/checkout');
-                  },
-                  text: 'PROCEED TO CHECKOUT',
-                  icon: Icons.payment,
-                ),
-                Gap(12.h),
-              ] else ...[
-                SecondaryButton(
-                  onPressed: () {
-                    // Set billing checkout state
-                    ref.read(posTablesProvider.notifier).updateStatus(table.id, POSTableStatus.paymentPending);
-                    setState(() => _selectedTable = null);
-                  },
-                  text: 'REQUEST BILL / CHECKOUT',
-                  icon: Icons.receipt,
-                ),
-                Gap(12.h),
-              ],
-            ],
-            DangerButton(
-              onPressed: () async {
-                final confirm = await showPOSConfirmationDialog(
-                  context: context,
-                  title: 'Vacate Table ${table.number}?',
-                  description: 'Are you sure you want to clear this table? This will vacate all seated guests and clear all active order items.',
-                  confirmText: 'VACATE TABLE',
-                  isDanger: true,
-                  icon: Icons.cleaning_services,
-                );
-                if (confirm == true) {
-                  ref.read(posTablesProvider.notifier).clearTable(table.id);
-                  setState(() => _selectedTable = null);
-                }
-              },
-              text: 'CLEAR TABLE / VACATE',
-              icon: Icons.cleaning_services,
-            ),
-          ],
-        ],
-      ),
-      ),
-    );
-  }
 }
 
-class _SectionSegmentChip extends StatelessWidget {
-  const _SectionSegmentChip({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return ChoiceChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (_) => onTap(),
-      labelStyle: AppTextStyles.labelSmall.copyWith(
-        color: isSelected ? Colors.white : AppColors.textSecondary,
-        fontWeight: FontWeight.w700,
-      ),
-      selectedColor: AppColors.primary,
-      backgroundColor: AppColors.surface,
-      side: BorderSide(
-        color: isSelected ? AppColors.primary : AppColors.border,
-        width: 1,
-      ),
-    );
-  }
-}
 
 class _SummaryIndicator extends StatelessWidget {
   const _SummaryIndicator({

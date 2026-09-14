@@ -66,7 +66,7 @@ void main() {
 
     final cartService = CartService(dioClient);
     final connService = ConnectivityService();
-    final cartRepo = CartRepository(cartService, connService);
+    final cartRepo = CartRepository(cartService, connService, (id) => id == '00000000-0000-0000-0000-000000000001');
 
     // 3. Call syncCartToBackend
     const String tableId = '00000000-0000-0000-0000-000000000001';

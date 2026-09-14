@@ -303,6 +303,7 @@ class OrderSummary {
   final String? orderNotes;
   final int grandTotalMinor;
   final String? customerPaymentIntent;
+  final List<OrderSummaryItem> items;
 
   const OrderSummary({
     required this.id,
@@ -313,6 +314,7 @@ class OrderSummary {
     this.orderNotes,
     this.grandTotalMinor = 0,
     this.customerPaymentIntent,
+    this.items = const [],
   });
 
   double get total => grandTotalMinor / 100.0;
@@ -327,6 +329,27 @@ class OrderSummary {
       orderNotes: json['order_notes'] as String?,
       grandTotalMinor: (json['grand_total_minor'] as num?)?.toInt() ?? 0,
       customerPaymentIntent: json['customer_payment_intent'] as String?,
+      items: (json['items'] as List<dynamic>?)
+              ?.map((e) => OrderSummaryItem.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+    );
+  }
+}
+
+class OrderSummaryItem {
+  final String name;
+  final int qty;
+
+  const OrderSummaryItem({
+    required this.name,
+    required this.qty,
+  });
+
+  factory OrderSummaryItem.fromJson(Map<String, dynamic> json) {
+    return OrderSummaryItem(
+      name: (json['name'] ?? '') as String,
+      qty: (json['qty'] as num?)?.toInt() ?? 1,
     );
   }
 }

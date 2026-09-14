@@ -8,6 +8,7 @@ export 'section_header.dart';
 export 'metric_tile.dart';
 export 'empty_state_widget.dart';
 export 'loading_overlay.dart';
+export 'loading_indicator.dart';
 export 'operational_status_chip.dart';
 export 'pos_table_card.dart';
 export 'financial_summary.dart';
@@ -18,4 +19,5 @@ export 'interaction_listener.dart';
 export 'inactivity_scope.dart';
 export 'session_expired_dialog.dart';
 export 'modifier_selection_dialog.dart';
+export 'order_type_selection_dialog.dart';
 

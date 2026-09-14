@@ -41,69 +41,98 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
 
   @override
   Widget build(BuildContext context) {
-    final allOrders = ref.watch(ordersProvider);
+    final ordersAsync = ref.watch(ordersProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Column(
-        children: [
-          // ── Top bar ─────────────────────────────────────────────────────
-          Container(
-            color: AppColors.surface,
-            child: Column(
-              children: [
-                SizedBox(
-                  height: 72.h,
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 24.w),
-                    child: Row(
-                      children: [
-                        Text('Orders', style: AppTextStyles.headlineMedium),
-                        Gap(12.w),
-                        _CountBadge(count: allOrders.length),
-                      ],
-                    ),
+      body: ordersAsync.when(
+        data: (allOrders) => _buildBody(context, allOrders),
+        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+        error: (e, stack) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.error_outline, size: 48.sp, color: AppColors.error),
+              Gap(12.h),
+              Text('Unable to load orders.', style: AppTextStyles.titleLarge),
+              Gap(8.h),
+              Text(e.toString(), style: AppTextStyles.bodySmall, textAlign: TextAlign.center),
+              Gap(16.h),
+              ElevatedButton(
+                onPressed: () => ref.read(ordersProvider.notifier).fetchOrders(),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBody(BuildContext context, List<Order> allOrders) {
+    return Column(
+      children: [
+        // ── Top bar ─────────────────────────────────────────────────────
+        Container(
+          color: AppColors.surface,
+          child: Column(
+            children: [
+              SizedBox(
+                height: 72.h,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 24.w),
+                  child: Row(
+                    children: [
+                      Text('Orders', style: AppTextStyles.headlineMedium),
+                      Gap(12.w),
+                      _CountBadge(count: allOrders.length),
+                    ],
                   ),
                 ),
-                TabBar(
-                  controller: _tabController,
-                  isScrollable: true,
-                  tabs: _tabs
-                      .map((t) => Tab(
-                            child: Row(
-                              children: [
-                                Text(t.label),
-                                if (t.status != null) ...[
-                                  Gap(6.w),
-                                  _CountBadge(
-                                    count: allOrders
-                                        .where((o) => o.status == t.status)
-                                        .length,
-                                    small: true,
-                                  ),
-                                ],
+              ),
+              TabBar(
+                controller: _tabController,
+                isScrollable: true,
+                tabs: _tabs
+                    .map((t) => Tab(
+                          child: Row(
+                            children: [
+                              Text(t.label),
+                              if (t.status != null) ...[
+                                Gap(6.w),
+                                _CountBadge(
+                                  count: allOrders
+                                      .where((o) => o.status == t.status)
+                                      .length,
+                                  small: true,
+                                ),
                               ],
-                            ),
-                          ))
-                      .toList(),
-                ),
-              ],
-            ),
+                            ],
+                          ),
+                        ))
+                    .toList(),
+              ),
+            ],
           ),
-          // ── Tab views ────────────────────────────────────────────────────
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: _tabs.map((t) {
-                final filtered = t.status == null
-                    ? allOrders
-                    : allOrders.where((o) => o.status == t.status).toList();
-                return _OrderList(orders: filtered);
-              }).toList(),
-            ),
+        ),
+        // ── Tab views ────────────────────────────────────────────────────
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: _tabs.map((t) {
+              final filtered = t.status == null
+                  ? allOrders
+                  : allOrders.where((o) => o.status == t.status).toList();
+              return _OrderList(
+                orders: filtered,
+                emptyMessage: t.status == null 
+                    ? 'No orders' 
+                    : 'No ${t.label.toLowerCase()} orders',
+              );
+            }).toList(),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -111,8 +140,9 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
 // ── Order list ────────────────────────────────────────────────────────────────
 
 class _OrderList extends StatelessWidget {
-  const _OrderList({required this.orders});
+  const _OrderList({required this.orders, required this.emptyMessage});
   final List<Order> orders;
+  final String emptyMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -124,7 +154,7 @@ class _OrderList extends StatelessWidget {
             Icon(Icons.receipt_long_outlined,
                 size: 48.sp, color: AppColors.textDisabled),
             Gap(12.h),
-            Text('No orders', style: AppTextStyles.bodyLarge),
+            Text(emptyMessage, style: AppTextStyles.bodyLarge),
           ],
         ),
       );
@@ -153,6 +183,16 @@ class _OrderRow extends ConsumerWidget {
     final hasPaymentIntent = order.customerPaymentIntent != null;
     final borderColor = hasPaymentIntent ? AppColors.warning : AppColors.border;
     final paymentIntentLabel = order.customerPaymentIntent == 'upi' ? 'UPI PENDING' : 'CASH REQ';
+
+    final counterTable = ref.watch(counterTableProvider);
+    final isWalkIn = counterTable?.id == order.tableId;
+    final tableTitle = isWalkIn ? 'WALK-IN' : 'TABLE ${order.tableNumber}';
+
+    final itemsSummary = order.items.isEmpty 
+      ? '0 items' 
+      : '${order.items.length} items · ${order.total.asCurrency}';
+
+    final detailsString = '${order.status.label.toUpperCase()} · ${order.createdAt.minutesAgoLabel}';
 
     if (isCompact) {
       return Container(
@@ -183,32 +223,19 @@ class _OrderRow extends ConsumerWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Table ${order.tableNumber}',
-                        style: AppTextStyles.titleLarge,
+                        '#${order.orderNumber ?? "..."}',
+                        style: AppTextStyles.titleMedium.copyWith(color: AppColors.textSecondary),
                       ),
-                      Text(
-                        order.total.asCurrency,
-                        style: AppTextStyles.priceTag,
-                      ),
+                      Text(tableTitle, style: AppTextStyles.titleLarge),
                     ],
                   ),
                   Gap(4.h),
-                  Text(
-                    order.items
-                        .map((i) => '${i.quantity}× ${i.menuItem.name}')
-                        .join(', '),
-                    style: AppTextStyles.bodySmall,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  Text(itemsSummary, style: AppTextStyles.bodySmall),
                   Gap(8.h),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        order.createdAt.minutesAgoLabel,
-                        style: AppTextStyles.bodySmall,
-                      ),
+                      Text(detailsString, style: AppTextStyles.bodySmall),
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -248,36 +275,44 @@ class _OrderRow extends ConsumerWidget {
             ),
           ),
           Gap(16.w),
-          // Table + time
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Table ${order.tableNumber}',
-                style: AppTextStyles.titleLarge,
-              ),
-              Gap(4.h),
-              Text(
-                order.createdAt.minutesAgoLabel,
-                style: AppTextStyles.bodySmall,
-              ),
-            ],
+          // Order num + Table
+          SizedBox(
+            width: 140.w,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '#${order.orderNumber ?? "..."}',
+                  style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+                ),
+                Gap(4.h),
+                Text(tableTitle, style: AppTextStyles.titleLarge),
+              ],
+            ),
           ),
           Gap(24.w),
-          // Items summary — Flexible prevents overflow at narrow widths
-          Flexible(
-            child: Text(
-              order.items
-                  .map((i) => '${i.quantity}× ${i.menuItem.name}')
-                  .join(', '),
-              style: AppTextStyles.bodySmall,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+          // Items summary
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(itemsSummary, style: AppTextStyles.titleMedium),
+                Gap(4.h),
+                Text(
+                  order.items.map((i) => '${i.quantity}× ${i.itemNameSnapshot}').join(', '),
+                  style: AppTextStyles.bodySmall,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
           ),
           Gap(16.w),
-          // Total
-          Text(order.total.asCurrency, style: AppTextStyles.priceTag),
+          // Time
+          SizedBox(
+            width: 80.w,
+            child: Text(order.createdAt.minutesAgoLabel, style: AppTextStyles.bodySmall),
+          ),
           Gap(16.w),
           // Status badge
           if (hasPaymentIntent) ...[

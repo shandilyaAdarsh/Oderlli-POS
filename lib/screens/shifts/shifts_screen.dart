@@ -143,7 +143,7 @@ class ShiftsScreen extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        _buildLeftContent(context, ref, session, allOrders.length, pendingOrdersCount),
+                        _buildLeftContent(context, ref, session, allOrders.valueOrNull?.length ?? 0, pendingOrdersCount),
                         Gap(20.h),
                         _buildRightContent(session, isVertical),
                       ],
@@ -158,7 +158,7 @@ class ShiftsScreen extends ConsumerWidget {
                         Expanded(
                           flex: 6,
                           child: SingleChildScrollView(
-                            child: _buildLeftContent(context, ref, session, allOrders.length, pendingOrdersCount),
+                            child: _buildLeftContent(context, ref, session, allOrders.valueOrNull?.length ?? 0, pendingOrdersCount),
                           ),
                         ),
                         Gap(24.w),

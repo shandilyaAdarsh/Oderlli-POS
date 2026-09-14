@@ -58,42 +58,21 @@ class _SplashScreenState extends State<SplashScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Logo mark
-                Container(
-                  width: 88.w,
-                  height: 88.h,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(24.r),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.4),
-                        blurRadius: 32,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    Icons.restaurant,
-                    color: Colors.white,
-                    size: 44.sp,
-                  ),
+                // Animated Icon
+                Image.asset(
+                  'assets/images/icon.png',
+                  width: 140.w,
+                  height: 140.h,
+                  fit: BoxFit.contain,
+                  filterQuality: FilterQuality.high,
                 ),
                 Gap(24.h),
-                Text(
-                  'Orderlyy',
-                  style: AppTextStyles.displayMedium.copyWith(
-                    color: Colors.white,
-                    letterSpacing: -1,
-                  ),
-                ),
-                Gap(8.h),
-                Text(
-                  'Restaurant POS',
-                  style: AppTextStyles.bodyMedium.copyWith(
-                    color: AppColors.sidebarText,
-                    letterSpacing: 2,
-                  ),
+                // Logo
+                Image.asset(
+                  'assets/images/logo.png',
+                  width: 240.w,
+                  fit: BoxFit.contain,
+                  filterQuality: FilterQuality.high,
                 ),
                 Gap(48.h),
                 SizedBox(

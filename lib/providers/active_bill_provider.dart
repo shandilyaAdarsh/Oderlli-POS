@@ -1,11 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
-import 'package:uuid/uuid.dart';
 import '../models/models.dart';
 import 'auth_provider.dart';
 import 'orders_provider.dart';
-import 'table_provider.dart';
 import 'shift_provider.dart';
 import 'inactivity_provider.dart';
 import 'billing_provider.dart';
@@ -16,7 +14,7 @@ final activeTableIdProvider = StateProvider<String?>((ref) => null);
 /// Looks up the active order for the selected table.
 final activeTableOrderProvider = Provider<Order?>((ref) {
   final tableId = ref.watch(activeTableIdProvider);
-  final orders = ref.watch(ordersProvider);
+  final orders = ref.watch(ordersProvider).valueOrNull ?? [];
 
   if (orders.isEmpty || tableId == null) return null;
 

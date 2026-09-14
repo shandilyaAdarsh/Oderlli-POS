@@ -10,7 +10,6 @@ import '../../core/constants/app_constants.dart';
 import '../../widgets/widgets.dart';
 import '../../providers/providers.dart';
 import '../../core/extensions/extensions.dart';
-import '../../core/utils/role_permissions.dart';
 import '../../models/models.dart';
 
 /// The persistent sidebar + content shell used by all main sections.
@@ -150,21 +149,9 @@ class _Sidebar extends ConsumerWidget {
     final location = GoRouterState.of(context).uri.path;
     final auth = ref.watch(authProvider);
     final user = auth.user;
-    final role = user?.role ?? UserRole.server;
 
     // Filter main navigation items
-    final visibleNavItems = _navItems.where((item) {
-      if (item.route == AppRoutes.shifts) {
-        return RolePermissions.canCloseShift(role);
-      }
-      if (item.route == AppRoutes.reviews) {
-        return role == UserRole.manager;
-      }
-      // if (item.route == AppRoutes.kitchen) {
-      //   return role == UserRole.manager || role == UserRole.server;
-      // }
-      return true;
-    }).toList();
+    final visibleNavItems = _navItems.toList();
 
     return Container(
       width: isDrawer ? double.infinity : AppConstants.sidebarWidth.w,
@@ -194,20 +181,25 @@ class _Sidebar extends ConsumerWidget {
 
               if (showSpacer) const Spacer() else Gap(20.h),
 
-              // Settings (Only show if Manager)
-              if (RolePermissions.canManageSettings(role)) ...[
-                _SidebarNavItem(
-                  item: _NavItem(
-                    label: 'Settings',
-                    icon: Icons.settings_outlined,
-                    activeIcon: Icons.settings,
-                    route: AppRoutes.settings,
-                  ),
-                  isActive: location.startsWith(AppRoutes.settings),
-                ),
-                Gap(8.h),
-              ],
 
+
+              // Quick Action: New Order
+              _SidebarNavItem(
+                item: const _NavItem(
+                  label: 'Quick Order',
+                  icon: Icons.flash_on_outlined,
+                  activeIcon: Icons.flash_on,
+                  route: AppRoutes.menu,
+                ),
+                isActive: false,
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (ctx) => const OrderTypeSelectionDialog(),
+                  );
+                },
+              ),
+              Gap(8.h),
               // Lock Terminal Quick Action (For all roles)
               _SidebarNavItem(
                 item: const _NavItem(
@@ -254,28 +246,10 @@ class _Sidebar extends ConsumerWidget {
     //   route: AppRoutes.kitchen,
     // ),
     _NavItem(
-      label: 'New Order',
-      icon: Icons.shopping_bag_outlined,
-      activeIcon: Icons.shopping_bag,
-      route: AppRoutes.menu,
-    ),
-    _NavItem(
       label: 'Orders',
       icon: Icons.receipt_long_outlined,
       activeIcon: Icons.receipt_long,
       route: AppRoutes.orders,
-    ),
-    _NavItem(
-      label: 'Shifts',
-      icon: Icons.vpn_key_outlined,
-      activeIcon: Icons.vpn_key,
-      route: AppRoutes.shifts,
-    ),
-    _NavItem(
-      label: 'Reviews',
-      icon: Icons.star_outline,
-      activeIcon: Icons.star,
-      route: AppRoutes.reviews,
     ),
   ];
 }

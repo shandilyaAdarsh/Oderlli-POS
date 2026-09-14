@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
-import '../../constants/pos_constants.dart';
 import '../../models/models.dart';
 import '../constants/app_config.dart';
 import '../services/cart_service.dart';
@@ -118,7 +117,12 @@ class CartRepository {
       throw const OfflineCartException();
     }
 
-    throw CartValidationException(e.message ?? 'Unknown cart error');
+    String detailedMsg = e.message ?? 'Unknown cart error';
+    if (e.response?.data != null) {
+      detailedMsg += ' | Backend Data: ${e.response?.data}';
+    }
+
+    throw CartValidationException(detailedMsg);
   }
 
   /// Resolves the QR session token for a table
@@ -152,9 +156,12 @@ class CartRepository {
     } on DioException catch (e) {
       _checkForSchemaMismatch(e);
       // Cache the failure message to prevent hammering
-      final msg = e.response?.statusCode == 404
+      String msg = e.response?.statusCode == 404
           ? 'Cart service unavailable: /qr/resolve route not found on backend. Contact your system administrator.'
           : (e.message ?? 'Failed to resolve table session');
+      if (e.response?.data != null) {
+        msg += ' | Backend Data: ${e.response?.data}';
+      }
       _tableSessionFailures[tableId] = msg;
       throw CartValidationException(msg);
     }
@@ -597,7 +604,7 @@ class CartRepository {
     required List<Map<String, dynamic>> items,
   }) async {
     // 1. Resolve QR session token for the counter table (real API calls)
-    final sessionToken = await _cartService.resolveQrSessionForTableRaw(branchId, tableId);
+    final sessionToken = await _cartService.resolveQrSessionForTable(branchId, tableId);
     
     // 2. Fetch the cart to initialize it on backend
     Cart cart = await _cartService.fetchCart(sessionToken);

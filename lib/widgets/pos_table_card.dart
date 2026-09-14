@@ -3,7 +3,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import '../theme/theme.dart';
 import '../models/models.dart';
-import '../core/extensions/extensions.dart';
 import 'widgets.dart';
 
 /// ─── Orderlyy POS · Table Card Widget ───────────────────────────────────────
@@ -65,40 +64,31 @@ class POSTableCard extends StatelessWidget {
                   // Header: Table Number & Capacity
                   Row(
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'TABLE ${table.number}',
-                            style: AppTypography.tableLabel,
-                          ),
-                          if (table.assignedWaiterName != null) ...[
-                            Gap(2.h),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                             Text(
-                              table.assignedWaiterName!,
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                              ),
+                              table.tableName.toUpperCase(),
+                              style: AppTypography.tableLabel,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
+                            if (table.assignedWaiterName != null) ...[
+                              Gap(2.h),
+                              Text(
+                                table.assignedWaiterName!,
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
                           ],
-                        ],
-                      ),
-                      const Spacer(),
-                      Icon(
-                        Icons.people_outline,
-                        size: 16.sp,
-                        color: AppColors.textSecondary,
-                      ),
-                      Gap(4.w),
-                      Text(
-                        table.status == POSTableStatus.available
-                            ? '${table.capacity}'
-                            : '${table.guestCount}/${table.capacity}',
-                        style: AppTypography.bodySmall.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textSecondary,
                         ),
                       ),
+
                     ],
                   ),
                   Gap(6.h),
@@ -108,69 +98,28 @@ class POSTableCard extends StatelessWidget {
                       duration: const Duration(milliseconds: 300),
                       switchInCurve: Curves.easeInOut,
                       switchOutCurve: Curves.easeInOut,
-                      child: table.status != POSTableStatus.available
-                          ? Column(
-                              key: ValueKey('active_${table.id}_${table.status}'),
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.access_time,
-                                      size: 13.sp,
-                                      color: AppColors.textSecondary,
-                                    ),
-                                    Gap(4.w),
-                                    Expanded(
-                                      child: Text(
-                                        '${table.elapsedMinutes}m elapsed',
-                                        style: AppTypography.bodySmall.copyWith(
-                                          color: AppColors.textSecondary,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    Gap(8.w),
-                                    Text(
-                                      table.waiterName ?? '',
-                                      style: AppTypography.bodySmall.copyWith(
-                                        color: AppColors.primary,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
-                                ),
-                                Gap(6.h),
-                                // Bill Amount - formatted using brand consistent currency format
-                                Text(
-                                  table.billTotal.asCurrency,
-                                  style: AppTypography.priceTag.copyWith(
-                                    fontSize: 20.sp,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            )
-                          : Align(
-                              key: ValueKey('vacant_${table.id}'),
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                'Table is vacant',
-                                style: AppTypography.bodySmall.copyWith(
-                                  color: AppColors.textDisabled,
-                                  fontStyle: FontStyle.italic,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                      child: Column(
+                        key: ValueKey('status_${table.id}_${table.status}'),
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            table.status.label.toUpperCase(),
+                            style: AppTypography.bodySmall.copyWith(
+                              color: statusColor,
+                              fontWeight: FontWeight.w800,
                             ),
+                          ),
+                          Gap(4.h),
+                          Text(
+                            '₹${table.status == POSTableStatus.available ? "0.00" : table.billTotal.toStringAsFixed(2)}',
+                            style: AppTypography.bodyLarge.copyWith(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   // Footer: Operational Status Chip & Payment Intent

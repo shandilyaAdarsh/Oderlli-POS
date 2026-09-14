@@ -15,25 +15,6 @@ import '../../core/extensions/extensions.dart';
 class CartScreen extends ConsumerStatefulWidget {
   const CartScreen({super.key});
 
-  static const List<String> _availableModifiers = [
-    'No Onion',
-    'Extra Cheese',
-    'Spicy',
-    'Gluten Free',
-    'Extra Sauce',
-    'Double Meat',
-    'No Dairy',
-    'Vegetarian',
-  ];
-
-  static const List<String> _quickNotes = [
-    'Allergy Alert',
-    'To Go',
-    'Well Done',
-    'Extra Hot',
-    'Dressing on Side',
-  ];
-
   @override
   ConsumerState<CartScreen> createState() => _CartScreenState();
 }
@@ -224,6 +205,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                     DropdownButtonFormField<String>(
                       initialValue: selectedTableId ?? currentSelectedTable?.id,
                       dropdownColor: AppColors.surfaceElevated,
+                      isExpanded: true,
                       decoration: InputDecoration(
                         prefixIcon: const Icon(Icons.table_restaurant_outlined),
                         contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
@@ -232,8 +214,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                         return DropdownMenuItem<String>(
                           value: t.id,
                           child: Text(
-                            'Table ${t.number} (${t.status.label})',
+                            t.tableName,
                             style: AppTextStyles.bodyMedium,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         );
                       }).toList(),
@@ -258,29 +241,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                 ],
               ),
             ),
-            Gap(24.h),
-
-            // Apply Discount Options
-            POSCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Applied Discount', style: AppTextStyles.titleMedium),
-                  Gap(12.h),
-                  Row(
-                    children: [
-                      _buildDiscountButton(ref, '0%', 0, cartState.discountPercent),
-                      Gap(8.w),
-                      _buildDiscountButton(ref, '10%', 10, cartState.discountPercent),
-                      Gap(8.w),
-                      _buildDiscountButton(ref, '15%', 15, cartState.discountPercent),
-                      Gap(8.w),
-                      _buildDiscountButton(ref, '20%', 20, cartState.discountPercent),
-                    ],
-                  ),
-                ],
-              ),
-            ),
+            // Discount block removed (was a placeholder)
             Gap(24.h),
 
             // Financial summary calculations
@@ -378,7 +339,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                                if (!mounted) return;
                                final destinationLabel = isCounterOrder
                                    ? PosConstants.counterTableName
-                                   : 'Table ${currentSelectedTable?.number ?? checkoutTableId}';
+                                   : currentSelectedTable?.tableName ?? 'Table $checkoutTableId';
                                this.context.showSuccessSnack(
                                  'Order dispatched to KDS successfully! $destinationLabel is now active.',
                                );
@@ -454,32 +415,6 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     );
   }
 
-  Widget _buildDiscountButton(WidgetRef ref, String label, double percent, double currentPercent) {
-    final isSelected = percent == currentPercent;
-    return Expanded(
-      child: OutlinedButton(
-        onPressed: () {
-          ref.read(posCartProvider.notifier).applyDiscount(percent);
-        },
-        style: OutlinedButton.styleFrom(
-          backgroundColor: isSelected ? AppColors.primary.withValues(alpha: 0.12) : Colors.transparent,
-          side: BorderSide(
-            color: isSelected ? AppColors.primary : AppColors.border,
-            width: isSelected ? 1.5 : 1,
-          ),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
-          padding: EdgeInsets.symmetric(vertical: 12.h),
-        ),
-        child: Text(
-          label,
-          style: AppTextStyles.labelSmall.copyWith(
-            color: isSelected ? AppColors.primary : AppColors.textPrimary,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildCartItemCard(BuildContext context, WidgetRef ref, POSCartItem item) {
     return POSCard(
@@ -585,37 +520,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           ),
           Gap(12.h),
           Container(height: 1.h, color: AppColors.borderSubtle),
-          Gap(12.h),
-
-          // Modifiers Wrap
-          Text('Modifiers / Customizations', style: AppTextStyles.titleSmall),
-          Gap(8.h),
-          Wrap(
-            spacing: 8.w,
-            runSpacing: 8.h,
-            children: CartScreen._availableModifiers.map((mod) {
-              final isSelected = item.selectedModifiers.contains(mod);
-              return FilterChip(
-                label: Text(mod),
-                selected: isSelected,
-                onSelected: (_) {
-                  ref.read(posCartProvider.notifier).toggleModifier(item.menuItem.id, mod);
-                },
-                selectedColor: AppColors.primary.withValues(alpha: 0.15),
-                checkmarkColor: AppColors.primary,
-                labelStyle: AppTextStyles.labelMedium.copyWith(
-                  color: isSelected ? AppColors.primary : AppColors.textSecondary,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                ),
-                backgroundColor: AppColors.surfaceVariant,
-                side: BorderSide(
-                  color: isSelected ? AppColors.primary : AppColors.border,
-                  width: 1,
-                ),
-              );
-            }).toList(),
-          ),
-          Gap(16.h),
+          // Placeholder modifiers block removed
 
           // Notes Section
           Text('Kitchen Preparation Notes', style: AppTextStyles.titleSmall),
@@ -638,25 +543,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
               ),
             ],
           ),
-          Gap(8.h),
-          // Quick preset notes
-          Wrap(
-            spacing: 6.w,
-            runSpacing: 6.h,
-            children: CartScreen._quickNotes.map((qNote) {
-              return ActionChip(
-                label: Text(qNote),
-                onPressed: () {
-                  final currentNotes = item.notes ?? '';
-                  final newNotes = currentNotes.trim().isEmpty ? qNote : '$currentNotes, $qNote';
-                  ref.read(posCartProvider.notifier).updateNotes(item.menuItem.id, newNotes);
-                },
-                backgroundColor: AppColors.surfaceVariant,
-                side: const BorderSide(color: AppColors.border),
-                labelStyle: AppTextStyles.labelSmall.copyWith(color: AppColors.textSecondary),
-              );
-            }).toList(),
-          ),
+          // Quick preset notes removed
         ],
       ),
     );

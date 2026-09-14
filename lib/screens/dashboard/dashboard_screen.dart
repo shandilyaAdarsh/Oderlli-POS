@@ -25,9 +25,7 @@ class DashboardScreen extends ConsumerWidget {
     final occupiedCount =
         liveTables.where((t) => t.status != POSTableStatus.available).length;
 
-    // Filter active orders based on role mapping
-    final myAssignedOrders = activeOrders.where((o) => o.servedBy == user?.name).toList();
-    final unassignedOrders = activeOrders.where((o) => o.servedBy == null || o.servedBy!.isEmpty).toList();
+    // activeOrders contains all current orders across the restaurant
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -66,132 +64,47 @@ class DashboardScreen extends ConsumerWidget {
               
 
 
-              // ── Dynamic Section Lists based on Role ──────────────────────────
-              if (role == UserRole.server) ...[
-                // Server Partitions: My Orders & Service Queue
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 8.h),
-                    child: Text(
-                      'My Assigned Orders (${myAssignedOrders.length})',
-                      style: AppTypography.headlineSmall.copyWith(
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.2,
-                      ),
+              // ── Active Orders ────────────────────────────────────────────────
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 8.h),
+                  child: Text(
+                    'Active Orders',
+                    style: AppTypography.headlineSmall.copyWith(
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.2,
                     ),
                   ),
                 ),
-                if (myAssignedOrders.isEmpty)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.all(24.r),
-                      child: const EmptyStateWidget(
-                        icon: Icons.assignment_ind_outlined,
-                        title: 'No Assigned Orders',
-                        description: 'You are not serving any active tables. Select a table from the Floor Plan to start an order.',
-                      ),
-                    ),
-                  )
-                else
-                  SliverPadding(
-                    padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 12.h),
-                    sliver: SliverGrid(
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: crossAxisCount,
-                        crossAxisSpacing: 12.w,
-                        mainAxisSpacing: 12.h,
-                        childAspectRatio: childAspectRatio,
-                      ),
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) => _OrderCard(order: myAssignedOrders[index]),
-                        childCount: myAssignedOrders.length,
-                      ),
-                    ),
-                  ),
-                
+              ),
+              if (activeOrders.isEmpty)
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 8.h),
-                    child: Text(
-                      'Service Queue (Unassigned / Other)',
-                      style: AppTypography.headlineSmall.copyWith(
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.2,
-                      ),
+                    padding: EdgeInsets.all(24.r),
+                    child: const EmptyStateWidget(
+                      isCompact: true,
+                      icon: Icons.receipt_long_outlined,
+                      title: 'No Active Orders',
+                      description: 'Open Floor Plan to seat guests or start a New Order.',
+                    ),
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 16.h),
+                  sliver: SliverGrid(
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: crossAxisCount,
+                      crossAxisSpacing: 12.w,
+                      mainAxisSpacing: 12.h,
+                      childAspectRatio: childAspectRatio,
+                    ),
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) => _OrderCard(order: activeOrders[index]),
+                      childCount: activeOrders.length,
                     ),
                   ),
                 ),
-                if (unassignedOrders.isEmpty)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.all(24.r),
-                      child: const EmptyStateWidget(
-                        icon: Icons.playlist_add_check_circle_outlined,
-                        title: 'Queue Cleared',
-                        description: 'No unassigned orders require floor service at the moment.',
-                      ),
-                    ),
-                  )
-                else
-                  SliverPadding(
-                    padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 16.h),
-                    sliver: SliverGrid(
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: crossAxisCount,
-                        crossAxisSpacing: 12.w,
-                        mainAxisSpacing: 12.h,
-                        childAspectRatio: childAspectRatio,
-                      ),
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) => _OrderCard(order: unassignedOrders[index]),
-                        childCount: unassignedOrders.length,
-                      ),
-                    ),
-                  ),
-              ] else ...[
-                // Manager & Cashier View: All active orders
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 8.h),
-                    child: Text(
-                      role == UserRole.cashier ? 'Active Billing Queue' : 'Active Orders',
-                      style: AppTypography.headlineSmall.copyWith(
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                  ),
-                ),
-                if (activeOrders.isEmpty)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.all(24.r),
-                      child: EmptyStateWidget(
-                        icon: Icons.receipt_long_outlined,
-                        title: 'No Active Orders',
-                        description: role == UserRole.cashier
-                            ? 'All orders are fully checked out. Open Floor Plan to seat guests or New Order to checkout.'
-                            : 'No active orders in the system.',
-                      ),
-                    ),
-                  )
-                else
-                  SliverPadding(
-                    padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 16.h),
-                    sliver: SliverGrid(
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: crossAxisCount,
-                        crossAxisSpacing: 12.w,
-                        mainAxisSpacing: 12.h,
-                        childAspectRatio: childAspectRatio,
-                      ),
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) => _OrderCard(order: activeOrders[index]),
-                        childCount: activeOrders.length,
-                      ),
-                    ),
-                  ),
-              ],
             ],
           );
         },
@@ -209,9 +122,7 @@ class _TopBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final displayName = user?.name ?? 'Staff';
     final displayRole = user?.role ?? UserRole.manager;
-    final greeting = ref.watch(greetingProvider);
     final authState = ref.watch(authProvider);
     final shiftState = ref.watch(shiftProvider);
     
@@ -231,12 +142,7 @@ class _TopBar extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  '$greeting, $displayName 👋',
-                  style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+
                 Row(
                   children: [
                     Text(
@@ -418,7 +324,7 @@ class _StatsRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isVertical = context.isVerticalLayout;
-    final orders = ref.watch(ordersProvider);
+    final orders = ref.watch(ordersProvider).valueOrNull ?? [];
 
     final now = DateTime.now();
     final todayOrders = orders.where((o) {

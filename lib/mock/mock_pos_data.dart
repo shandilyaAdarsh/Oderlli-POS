@@ -9,14 +9,14 @@ abstract final class MockPOSData {
   static List<TableModel> get tables => [
         TableModel(
           id: 't-1',
-          number: 1,
+          tableName: '1',
           capacity: 2,
           status: POSTableStatus.available,
           guestCount: 0,
         ),
         TableModel(
           id: 't-2',
-          number: 2,
+          tableName: '2',
           capacity: 4,
           status: POSTableStatus.occupied,
           guestCount: 3,
@@ -26,7 +26,7 @@ abstract final class MockPOSData {
         ),
         TableModel(
           id: 't-3',
-          number: 3,
+          tableName: '3',
           capacity: 4,
           status: POSTableStatus.preparing,
           guestCount: 2,
@@ -36,7 +36,7 @@ abstract final class MockPOSData {
         ),
         TableModel(
           id: 't-4',
-          number: 4,
+          tableName: '4',
           capacity: 6,
           status: POSTableStatus.ready,
           guestCount: 4,
@@ -46,7 +46,7 @@ abstract final class MockPOSData {
         ),
         TableModel(
           id: 't-5',
-          number: 5,
+          tableName: '5',
           capacity: 8,
           status: POSTableStatus.paymentPending,
           guestCount: 6,
@@ -56,14 +56,14 @@ abstract final class MockPOSData {
         ),
         TableModel(
           id: 't-6',
-          number: 6,
+          tableName: '6',
           capacity: 4,
           status: POSTableStatus.available,
           guestCount: 0,
         ),
         TableModel(
           id: 't-7',
-          number: 7,
+          tableName: '7',
           capacity: 2,
           status: POSTableStatus.occupied,
           guestCount: 2,
@@ -73,7 +73,7 @@ abstract final class MockPOSData {
         ),
         TableModel(
           id: 't-8',
-          number: 8,
+          tableName: '8',
           capacity: 6,
           status: POSTableStatus.paymentPending,
           guestCount: 5,

@@ -140,6 +140,8 @@ class OrderRepository {
     required String cartId,
     required int expectedCartRevision,
     String? orderNotes,
+    String? customerName,
+    String? customerPhone,
   }) async {
     final useFallback = await _shouldUseMockFallback();
     if (useFallback) {
@@ -164,10 +166,12 @@ class OrderRepository {
       final mutationId = _uuid.v4();
       final idempotencyKey = _uuid.v4();
 
-      final payload = {
+      final payload = <String, dynamic>{
         'cartId': cartId,
         'tableId': tableId,
         'orderNotes': orderNotes,
+        if (customerName != null) 'customerName': customerName, // ignore: use_null_aware_elements
+        if (customerPhone != null) 'customerPhone': customerPhone, // ignore: use_null_aware_elements
       };
 
       final envelope = _buildMutationEnvelope(

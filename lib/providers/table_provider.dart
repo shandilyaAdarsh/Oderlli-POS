@@ -115,12 +115,26 @@ final posSelectedSectionProvider = StateProvider<String?>((ref) => null);
 
 final counterTableProvider = Provider<TableModel?>((ref) {
   final tables = ref.watch(posTablesProvider).valueOrNull ?? [];
-  return tables.where((t) => t.number == 0 || t.sectionName?.toLowerCase() == 'counter' || t.floorName?.toLowerCase() == 'counter').firstOrNull;
+  return tables.where((t) {
+    final name = t.tableName.toLowerCase();
+    final section = t.sectionName?.toLowerCase() ?? '';
+    final floor = t.floorName?.toLowerCase() ?? '';
+    return name == '0' ||
+        name.contains('counter') ||
+        name.contains('walk-in') ||
+        section.contains('counter') ||
+        floor.contains('counter');
+  }).firstOrNull;
 });
 
 final posFilteredTablesProvider = Provider<List<TableModel>>((ref) {
   final tablesAsync = ref.watch(posTablesProvider);
-  final tables = tablesAsync.valueOrNull ?? [];
+  final allTables = tablesAsync.valueOrNull ?? [];
+  final counterTable = ref.watch(counterTableProvider);
+  
+  // Filter out the Counter table from the physical floor plan
+  final tables = allTables.where((t) => t.id != counterTable?.id).toList();
+  
   final section = ref.watch(posSelectedSectionProvider);
   if (section == null) return tables;
   
@@ -129,9 +143,9 @@ final posFilteredTablesProvider = Provider<List<TableModel>>((ref) {
   }
   
   if (section == 'Indoor') {
-    return tables.where((t) => t.number <= 6).toList();
+    return tables.where((t) => (int.tryParse(t.tableName) ?? 999) <= 6).toList();
   } else {
-    return tables.where((t) => t.number > 6).toList();
+    return tables.where((t) => (int.tryParse(t.tableName) ?? 0) > 6).toList();
   }
 });
 
@@ -164,7 +178,7 @@ final tablesProvider = Provider<List<RestaurantTable>>((ref) {
 
     return RestaurantTable(
       id: t.id,
-      number: t.number,
+      number: int.tryParse(t.tableName) ?? 0,
       capacity: t.capacity,
       status: mapStatus(t.status),
       section: t.sectionName,
@@ -198,7 +212,7 @@ final tableSectionsProvider = Provider<List<String>>((ref) {
 
 final liveTableStatusProvider = Provider<List<TableModel>>((ref) {
   final tables = ref.watch(posTablesProvider).valueOrNull ?? [];
-  final orders = ref.watch(ordersProvider);
+  final orders = ref.watch(ordersProvider).valueOrNull ?? [];
   final staffList = ref.watch(staffListProvider).valueOrNull ?? [];
 
   // Build a lookup: tableId -> most-recent active order

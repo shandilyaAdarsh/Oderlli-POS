@@ -16,14 +16,13 @@ import '../screens/floor/floor_screen.dart';
 import '../screens/floor/table_selection_screen.dart';
 import '../screens/orders/orders_screen.dart';
 // import '../screens/kitchen/kitchen_screen.dart';
-import '../screens/shifts/shifts_screen.dart';
-import '../screens/settings/settings_screen.dart';
-import '../screens/reviews/reviews_screen.dart';
+
 import '../screens/menu/menu_screen.dart';
 import '../screens/cart/cart_screen.dart';
 import '../screens/checkout/checkout_shell.dart';
 import '../screens/checkout/billing_screen.dart';
 import '../screens/checkout/payments_screen.dart';
+import '../screens/checkout/customer_details_screen.dart';
 
 import '../screens/checkout/refunds_screen.dart';
 import '../screens/shell/main_shell.dart';
@@ -85,8 +84,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         return null;
       }
 
-      // 4. Redirect fully authenticated users away from Splash and Login/Select Branch screens
-      if (isSplash || isLogin || isSelectBranch || isEmployeeLogin) {
+      // 4. Redirect fully authenticated users away from Login/Select Branch screens (let Splash finish naturally)
+      if (isLogin || isSelectBranch || isEmployeeLogin) {
         return AppRoutes.dashboard;
       }
 
@@ -94,26 +93,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       final role = authState.user!.role;
       final path = state.uri.path;
 
-      // 1. Settings Configuration: Manager Only
-      if (path.startsWith(AppRoutes.settings)) {
-        if (!RolePermissions.canManageSettings(role)) {
-          return AppRoutes.dashboard;
-        }
-      }
 
-      // 2. Shift Audit Screen: Manager Only
-      if (path.startsWith(AppRoutes.shifts)) {
-        if (!RolePermissions.canCloseShift(role)) {
-          return AppRoutes.dashboard;
-        }
-      }
-
-      // 2.5 Reviews Screen: Manager Only
-      if (path.startsWith(AppRoutes.reviews)) {
-        if (role != UserRole.manager) {
-          return AppRoutes.dashboard;
-        }
-      }
 
       // 3. Refunds Screen: Manager and Cashiers (Server Blocked)
       if (path.startsWith(AppRoutes.refunds)) {
@@ -187,6 +167,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const TableSelectionScreen(),
           ),
           GoRoute(
+            path: AppRoutes.customerDetails,
+            name: 'customer-details',
+            builder: (context, state) => const CustomerDetailsScreen(),
+          ),
+          GoRoute(
             path: AppRoutes.orders,
             name: 'orders',
             builder: (context, state) => const OrdersScreen(),
@@ -198,19 +183,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           //   builder: (context, state) => const KitchenScreen(),
           // ),
           GoRoute(
-            path: AppRoutes.shifts,
-            name: 'shifts',
-            builder: (context, state) => const ShiftsScreen(),
+            path: AppRoutes.menu,
+            name: 'menu',
+            builder: (context, state) => const MenuScreen(),
           ),
           GoRoute(
-            path: AppRoutes.settings,
-            name: 'settings',
-            builder: (context, state) => const SettingsScreen(),
-          ),
-          GoRoute(
-            path: AppRoutes.reviews,
-            name: 'reviews',
-            builder: (context, state) => const ReviewsScreen(),
+            path: AppRoutes.posMenu,
+            name: 'pos-menu',
+            builder: (context, state) => const MenuScreen(),
           ),
           GoRoute(
             path: AppRoutes.cart,
@@ -219,20 +199,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
-
-      // ── Standalone Menu (New Order Screen) ────────────────────────────────
-      GoRoute(
-        path: AppRoutes.menu,
-        name: 'menu',
-        builder: (context, state) => const MenuScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.posMenu,
-        name: 'pos-menu',
-        builder: (context, state) => const MenuScreen(),
-      ),
-
-      // ── Nested Checkout/Payment Shell ─────────────────────────────────────
       ShellRoute(
         builder: (context, state, child) => CheckoutShell(child: child),
         routes: [

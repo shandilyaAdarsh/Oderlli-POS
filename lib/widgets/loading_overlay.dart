@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import '../theme/theme.dart';
+import 'loading_indicator.dart';
 
 /// ─── Orderlyy POS · Loading Overlay ──────────────────────────────────────────
 ///
@@ -65,11 +66,10 @@ class LoadingOverlay extends StatelessWidget {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             SizedBox(
-                              width: 36.w,
-                              height: 36.h,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 3.5.w,
-                                valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                              width: 60.w,
+                              height: 60.h,
+                              child: const Center(
+                                child: OrderlyyLoadingIndicator(),
                               ),
                             ),
                             if (message != null) ...[

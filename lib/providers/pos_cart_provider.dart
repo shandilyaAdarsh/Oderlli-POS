@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:uuid/uuid.dart';
-import '../constants/pos_constants.dart';
 import '../core/services/cart_service.dart';
 import '../core/services/order_service.dart';
 import '../core/repositories/cart_repository.dart';

@@ -32,7 +32,7 @@ extension POSTableStatusX on POSTableStatus {
 class TableModel {
   const TableModel({
     required this.id,
-    required this.number,
+    required this.tableName,
     required this.capacity,
     this.status = POSTableStatus.available,
     this.guestCount = 0,
@@ -47,7 +47,7 @@ class TableModel {
   });
 
   final String id;
-  final int number;
+  final String tableName;
   final int capacity;
   final POSTableStatus status;
   final int guestCount;
@@ -68,7 +68,7 @@ class TableModel {
 
   TableModel copyWith({
     String? id,
-    int? number,
+    String? tableName,
     int? capacity,
     POSTableStatus? status,
     int? guestCount,
@@ -83,7 +83,7 @@ class TableModel {
   }) =>
       TableModel(
         id: id ?? this.id,
-        number: number ?? this.number,
+        tableName: tableName ?? this.tableName,
         capacity: capacity ?? this.capacity,
         status: status ?? this.status,
         guestCount: guestCount ?? this.guestCount,
