@@ -52,7 +52,7 @@ abstract final class AppConfig {
 
   static const String sentryDsn = String.fromEnvironment(
     'SENTRY_DSN',
-    defaultValue: '',
+    defaultValue: 'https://f99e42485c4b421b870d5efa5d798d34@o4512208763420672.ingest.de.sentry.io/4512273379557456',
   );
   static const String sentryOrg = 'g8g-agency';
 }
