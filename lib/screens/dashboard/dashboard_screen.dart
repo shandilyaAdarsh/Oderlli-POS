@@ -128,6 +128,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               icon: Icons.fastfood_rounded,
               onTap: () => context.go(AppRoutes.menu),
             ),
+            Gap(12.w),
+            _buildAdminActionButton(
+              label: 'Verify Sentry',
+              icon: Icons.bug_report_outlined,
+              onTap: () {
+                throw StateError('This is test exception');
+              },
+            ),
           ],
         ),
 

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
+import 'package:sentry/sentry.dart';
 import '../../theme/theme.dart';
 import '../../providers/auth_provider.dart';
 
@@ -355,6 +356,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                         ),
                       ],
+                      Gap(20.h),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          throw StateError('This is test exception');
+                        },
+                        icon: const Icon(Icons.bug_report_outlined, size: 16),
+                        label: const Text('Verify Sentry Setup'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.redAccent.withValues(alpha: 0.15),
+                          foregroundColor: Colors.redAccent,
+                          side: const BorderSide(color: Colors.redAccent, width: 1),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+                          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                        ),
+                      ),
                     ],
                   ),
                 ),
