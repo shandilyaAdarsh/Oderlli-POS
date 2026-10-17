@@ -358,21 +358,39 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                         ),
                       ],
-                      Gap(20.h),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          throw StateError('This is test exception');
-                        },
-                        icon: const Icon(Icons.bug_report_outlined, size: 16),
-                        label: const Text('Verify Sentry Setup'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.redAccent.withValues(alpha: 0.15),
-                          foregroundColor: Colors.redAccent,
-                          side: const BorderSide(color: Colors.redAccent, width: 1),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
-                          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                      if (kDebugMode) ...[
+                        Gap(20.h),
+                        ElevatedButton.icon(
+                          onPressed: () async {
+                            try {
+                              throw StateError('Sentry verification test event from Login Screen');
+                            } catch (e, st) {
+                              await Sentry.captureException(e, stackTrace: st);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      '✅ Sentry test event captured and reported!',
+                                      style: TextStyle(fontFamily: 'PlusJakartaSans', color: Colors.white, fontWeight: FontWeight.w600),
+                                    ),
+                                    backgroundColor: Color(0xFF2E7D32),
+                                    duration: Duration(seconds: 3),
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                          icon: const Icon(Icons.bug_report_outlined, size: 16),
+                          label: const Text('Verify Sentry Setup'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.redAccent.withValues(alpha: 0.15),
+                            foregroundColor: Colors.redAccent,
+                            side: const BorderSide(color: Colors.redAccent, width: 1),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+                            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                          ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),

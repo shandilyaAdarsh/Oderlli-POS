@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
 import '../../theme/theme.dart';
 import '../../mock/restro_mock_data.dart';
@@ -128,14 +130,32 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               icon: Icons.fastfood_rounded,
               onTap: () => context.go(AppRoutes.menu),
             ),
-            Gap(12.w),
-            _buildAdminActionButton(
-              label: 'Verify Sentry',
-              icon: Icons.bug_report_outlined,
-              onTap: () {
-                throw StateError('This is test exception');
-              },
-            ),
+            if (kDebugMode) ...[
+              Gap(12.w),
+              _buildAdminActionButton(
+                label: 'Verify Sentry',
+                icon: Icons.bug_report_outlined,
+                onTap: () async {
+                  try {
+                    throw StateError('Sentry verification test event from Restro POS Dashboard');
+                  } catch (e, st) {
+                    await Sentry.captureException(e, stackTrace: st);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            '✅ Sentry test event captured and reported!',
+                            style: TextStyle(fontFamily: 'PlusJakartaSans', color: Colors.white, fontWeight: FontWeight.w600),
+                          ),
+                          backgroundColor: Color(0xFF2E7D32),
+                          duration: Duration(seconds: 3),
+                        ),
+                      );
+                    }
+                  }
+                },
+              ),
+            ],
           ],
         ),
 
