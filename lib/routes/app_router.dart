@@ -5,6 +5,7 @@ import '../providers/auth_provider.dart';
 import '../models/models.dart';
 import '../core/utils/role_permissions.dart';
 import '../theme/theme.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'inactivity_route_observer.dart';
 
 import '../screens/splash/splash_screen.dart';
@@ -48,7 +49,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: AppRoutes.splash,
     debugLogDiagnostics: true,
     refreshListenable: refreshListenable,
-    observers: [InactivityRouteObserver(ref)],
+    observers: [InactivityRouteObserver(ref), SentryNavigatorObserver()],
     redirect: (context, state) {
       final authState = ref.read(authProvider);
       final isOrgAuthenticated = authState.isOrgAuthenticated;

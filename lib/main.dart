@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'routes/app_router.dart';
@@ -39,11 +41,34 @@ void main() async {
     }
   }
 
-  runApp(
-    const ProviderScope(
-      child: OrderlyyApp(),
-    ),
-  );
+  // If SENTRY_DSN is provided, initialize Sentry telemetry & error monitoring
+  if (AppConfig.sentryDsn.isNotEmpty) {
+    await SentryFlutter.init(
+      (options) {
+        options.dsn = AppConfig.sentryDsn;
+        options.sendDefaultPii = true;
+        options.tracesSampleRate = 1.0;
+        options.profilesSampleRate = 1.0;
+        options.replay.sessionSampleRate = 0.1;
+        options.replay.onErrorSampleRate = 1.0;
+        options.enableLogs = true;
+        options.environment = kReleaseMode ? 'production' : 'development';
+      },
+      appRunner: () => runApp(
+        const SentryWidget(
+          child: ProviderScope(
+            child: OrderlyyApp(),
+          ),
+        ),
+      ),
+    );
+  } else {
+    runApp(
+      const ProviderScope(
+        child: OrderlyyApp(),
+      ),
+    );
+  }
 }
 
 class OrderlyyApp extends ConsumerWidget {

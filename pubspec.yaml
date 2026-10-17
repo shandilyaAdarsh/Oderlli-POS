@@ -46,6 +46,9 @@ dependencies:
   uuid: ^4.5.1
   connectivity_plus: ^6.1.1
 
+  # Error Tracking & Telemetry
+  sentry_flutter: ^9.14.0
+
   # Printing
   esc_pos_printer: ^4.1.0
   esc_pos_utils: ^1.1.0
