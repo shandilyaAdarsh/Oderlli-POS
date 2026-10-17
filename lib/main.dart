@@ -13,9 +13,7 @@ import 'core/constants/app_constants.dart';
 import 'core/constants/app_config.dart';
 import 'widgets/widgets.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
+Future<void> _initializeApp() async {
   // Disable runtime Google Fonts network fetching — all fonts are bundled locally.
   GoogleFonts.config.allowRuntimeFetching = false;
 
@@ -40,8 +38,12 @@ void main() async {
       debugPrint('[Main] Supabase initialization failed: $e\n$stack');
     }
   }
+}
 
-  // If SENTRY_DSN is provided, initialize Sentry telemetry & error monitoring
+void main() async {
+  // If SENTRY_DSN is provided, initialize Sentry telemetry & error monitoring.
+  // Note: SentryFlutter.init calls WidgetsFlutterBinding.ensureInitialized() internally
+  // inside its guarded zone. Calling it beforehand causes a Zone mismatch AssertionError.
   if (AppConfig.sentryDsn.isNotEmpty) {
     await SentryFlutter.init(
       (options) {
@@ -54,15 +56,20 @@ void main() async {
         options.enableLogs = true;
         options.environment = kReleaseMode ? 'production' : 'development';
       },
-      appRunner: () => runApp(
-        SentryWidget(
-          child: const ProviderScope(
-            child: OrderlyyApp(),
+      appRunner: () async {
+        await _initializeApp();
+        runApp(
+          SentryWidget(
+            child: const ProviderScope(
+              child: OrderlyyApp(),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   } else {
+    WidgetsFlutterBinding.ensureInitialized();
+    await _initializeApp();
     runApp(
       const ProviderScope(
         child: OrderlyyApp(),
