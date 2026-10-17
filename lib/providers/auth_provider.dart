@@ -371,7 +371,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       id: 'branch-restro-main',
       name: 'Restro Main Branch',
       tenantId: 'tenant-demo-restro',
-      address: '101 Gourmet Ave, City Center',
+      timezone: 'Asia/Kolkata',
     );
 
     state = state.copyWith(
@@ -399,7 +399,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         id: 'branch-restro-main',
         name: 'Restro Main Branch',
         tenantId: 'tenant-demo-restro',
-        address: '101 Gourmet Ave, City Center',
+        timezone: 'Asia/Kolkata',
       );
       state = state.copyWith(
         availableBranches: [demoBranch],
@@ -436,7 +436,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
           id: 'branch-restro-main',
           name: 'Restro Main Branch',
           tenantId: 'tenant-demo-restro',
-          address: '101 Gourmet Ave, City Center',
+          timezone: 'Asia/Kolkata',
         );
         state = state.copyWith(
           availableBranches: [demoBranch],
