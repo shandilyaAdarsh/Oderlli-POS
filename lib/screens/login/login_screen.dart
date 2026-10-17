@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
-import 'package:sentry/sentry.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import '../../routes/app_routes.dart';
 import '../../theme/theme.dart';
 import '../../providers/auth_provider.dart';
@@ -366,18 +366,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               throw StateError('Sentry verification test event from Login Screen');
                             } catch (e, st) {
                               await Sentry.captureException(e, stackTrace: st);
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      '✅ Sentry test event captured and reported!',
-                                      style: TextStyle(fontFamily: 'PlusJakartaSans', color: Colors.white, fontWeight: FontWeight.w600),
-                                    ),
-                                    backgroundColor: Color(0xFF2E7D32),
-                                    duration: Duration(seconds: 3),
+                              if (!mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    '✅ Sentry test event captured and reported!',
+                                    style: TextStyle(fontFamily: 'PlusJakartaSans', color: Colors.white, fontWeight: FontWeight.w600),
                                   ),
-                                );
-                              }
+                                  backgroundColor: Color(0xFF2E7D32),
+                                  duration: Duration(seconds: 3),
+                                ),
+                              );
                             }
                           },
                           icon: const Icon(Icons.bug_report_outlined, size: 16),

@@ -140,18 +140,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     throw StateError('Sentry verification test event from Restro POS Dashboard');
                   } catch (e, st) {
                     await Sentry.captureException(e, stackTrace: st);
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            '✅ Sentry test event captured and reported!',
-                            style: TextStyle(fontFamily: 'PlusJakartaSans', color: Colors.white, fontWeight: FontWeight.w600),
-                          ),
-                          backgroundColor: Color(0xFF2E7D32),
-                          duration: Duration(seconds: 3),
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          '✅ Sentry test event captured and reported!',
+                          style: TextStyle(fontFamily: 'PlusJakartaSans', color: Colors.white, fontWeight: FontWeight.w600),
                         ),
-                      );
-                    }
+                        backgroundColor: Color(0xFF2E7D32),
+                        duration: Duration(seconds: 3),
+                      ),
+                    );
                   }
                 },
               ),
