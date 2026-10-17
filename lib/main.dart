@@ -55,8 +55,8 @@ void main() async {
         options.environment = kReleaseMode ? 'production' : 'development';
       },
       appRunner: () => runApp(
-        const SentryWidget(
-          child: ProviderScope(
+        SentryWidget(
+          child: const ProviderScope(
             child: OrderlyyApp(),
           ),
         ),

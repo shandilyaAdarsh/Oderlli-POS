@@ -11,6 +11,7 @@ import '../core/services/auth_service.dart';
 import '../core/services/realtime_sync_service.dart';
 import '../core/repositories/auth_repository.dart';
 import '../models/models.dart';
+import '../core/constants/app_config.dart';
 import 'shift_provider.dart';
 import 'inactivity_provider.dart';
 

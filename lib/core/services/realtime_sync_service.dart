@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../constants/app_config.dart';
 import '../../providers/providers.dart';
 
 class RealtimeSyncService with WidgetsBindingObserver {
