@@ -260,31 +260,39 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${_getGreeting()}, $userName 👋',
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 22.sp,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFFF5F5F5),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${_getGreeting()}, $userName 👋',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 22.sp,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFFF5F5F5),
+                            ),
                           ),
-                        ),
-                        Gap(4.h),
-                        Text(
-                          'Give your best service for customers today!',
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 13.sp,
-                            color: const Color(0xFFABABAB),
+                          Gap(4.h),
+                          Text(
+                            'Give your best service for customers today!',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 13.sp,
+                              color: const Color(0xFFABABAB),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
+                    Gap(16.w),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
                           timeFormat.format(_currentTime),
@@ -376,15 +384,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                title,
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 13.sp,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFFABABAB),
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFFABABAB),
+                  ),
                 ),
               ),
+              Gap(8.w),
               Container(
                 padding: EdgeInsets.all(8.r),
                 decoration: BoxDecoration(
@@ -398,6 +411,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           Gap(12.h),
           Text(
             value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontFamily: 'Inter',
               fontSize: 24.sp,
@@ -410,13 +425,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             children: [
               const Icon(Icons.arrow_upward, color: Color(0xFF22C55E), size: 14),
               Gap(4.w),
-              Text(
-                '$footerPercent from yesterday',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 11.sp,
-                  color: const Color(0xFF22C55E),
-                  fontWeight: FontWeight.w600,
+              Flexible(
+                child: Text(
+                  '$footerPercent from yesterday',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 11.sp,
+                    color: const Color(0xFF22C55E),
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
@@ -529,6 +548,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           children: [
                             Text(
                               order.customer,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontFamily: 'Inter',
                                 fontSize: 14.sp,
@@ -539,6 +560,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             Gap(2.h),
                             Text(
                               '${order.itemCount} Items • ₹${order.total.toStringAsFixed(0)}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontFamily: 'Inter',
                                 fontSize: 12.sp,
@@ -714,6 +737,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         children: [
                           Text(
                             dish.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               fontFamily: 'Inter',
                               fontSize: 14.sp,
