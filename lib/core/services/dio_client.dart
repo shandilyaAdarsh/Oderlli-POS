@@ -43,6 +43,73 @@ class DioClient {
             options.path = options.path.substring(7);
           }
 
+          // Mock fallback for offline web development
+          if (AppConfig.allowMockFallbackInDebug) {
+            if (options.path.contains('/auth/login')) {
+              return handler.resolve(Response(
+                requestOptions: options,
+                statusCode: 200,
+                data: {
+                  'success': true,
+                  'data': {
+                    'accessToken': 'demo-access-token-12345',
+                    'refreshToken': 'demo-refresh-token-12345',
+                    'deviceSessionId': 'demo-session-id-12345',
+                    'user': {
+                      'id': 'staff-demo-1',
+                      'name': 'Amrit Maurya',
+                      'role': 'manager',
+                      'employeeId': 'EMP-001',
+                      'email': 'admin@restropos.com',
+                      'tenantId': 'tenant-demo-restro',
+                    }
+                  }
+                },
+              ));
+            }
+            if (options.path.contains('/tenants/current')) {
+              return handler.resolve(Response(
+                requestOptions: options,
+                statusCode: 200,
+                data: {
+                  'success': true,
+                  'data': {
+                    'id': 'tenant-demo-restro',
+                    'name': 'Restro POS Demo',
+                    'branches': [
+                      {
+                        'id': 'branch-restro-main',
+                        'name': 'Restro Main Branch',
+                        'address': '101 Gourmet Ave, City Center',
+                        'tenantId': 'tenant-demo-restro',
+                      }
+                    ]
+                  }
+                },
+              ));
+            }
+            if (options.path.contains('/auth/staff')) {
+              return handler.resolve(Response(
+                requestOptions: options,
+                statusCode: 200,
+                data: {
+                  'success': true,
+                  'data': [
+                    {
+                      'id': 'staff-demo-1',
+                      'name': 'Amrit Maurya',
+                      'role': 'manager',
+                      'pin': '1234',
+                      'terminalId': 'term-demo-1',
+                      'employeeId': 'EMP-001',
+                      'email': 'admin@restropos.com',
+                    }
+                  ]
+                },
+              ));
+            }
+          }
+
           // Inject Fingerprint header
           final fingerprint = await _fingerprintService.getOrCreateFingerprint();
           options.headers['X-Device-Fingerprint'] = fingerprint;

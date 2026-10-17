@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -34,12 +34,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final password = _passwordCtrl.text;
 
     final success = await ref.read(authProvider.notifier).loginOrganization(email, password);
-    if (!success && mounted) {
+    if (success && mounted) {
+      context.go(AppRoutes.dashboard);
+    } else if (!success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             ref.read(authProvider).errorMessage ?? 'Invalid organization credentials',
-            style: TextStyle(fontFamily: 'PlusJakartaSans',color: Colors.white, fontWeight: FontWeight.w600),
+            style: const TextStyle(fontFamily: 'PlusJakartaSans', color: Colors.white, fontWeight: FontWeight.w600),
           ),
           backgroundColor: AppColors.error,
         ),
@@ -47,22 +49,31 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  void _fillDemoCredentials(String email) {
+  Future<void> _handleQuickDemoLogin({String userName = 'Amrit Maurya'}) async {
+    await ref.read(authProvider.notifier).setDemoSession(userName: userName);
+    if (mounted) {
+      context.go(AppRoutes.dashboard);
+    }
+  }
+
+  void _fillDemoCredentials(String label, String email) {
     setState(() {
       _emailCtrl.text = email;
       _passwordCtrl.text = 'Test@123456';
     });
+    final name = label.contains('(') ? label.split('(').first.trim() : label;
+    _handleQuickDemoLogin(userName: name);
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    const brandRed = Color(0xFFBA0013);
+    final isDark = true;
+    const brandGold = AppColors.primary;
     final authState = ref.watch(authProvider);
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF191C1D) : const Color(0xFFF8F9FA),
+      backgroundColor: const Color(0xFF1F1F1F),
       body: Stack(
         children: [
           // Ambient Glow Background
@@ -73,11 +84,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               width: 384.w,
               height: 384.h,
               decoration: BoxDecoration(
-                color: brandRed.withValues(alpha: 0.05),
+                color: brandGold.withValues(alpha: 0.08),
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: brandRed.withValues(alpha: 0.05),
+                    color: brandGold.withValues(alpha: 0.08),
                     blurRadius: 100,
                   ),
                 ],
@@ -98,43 +109,54 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.point_of_sale_rounded, color: brandRed, size: 36),
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: brandGold,
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                            child: const Icon(Icons.restaurant, color: Color(0xFF1F1F1F), size: 28),
+                          ),
                           const SizedBox(width: 12),
                           Text(
-                            'Orderlyy ',
-                            style: TextStyle(fontFamily: 'PlusJakartaSans',
+                            'Restro ',
+                            style: TextStyle(
+                              fontFamily: 'Inter',
                               fontSize: 28.sp,
                               fontWeight: FontWeight.w800,
                               letterSpacing: -0.5,
-                              color: isDark ? Colors.white : const Color(0xFF191C1D),
+                              color: const Color(0xFFF5F5F5),
                             ),
                           ),
                           Text(
                             'POS',
-                            style: TextStyle(fontFamily: 'PlusJakartaSans',
+                            style: TextStyle(
+                              fontFamily: 'Inter',
                               fontSize: 28.sp,
                               fontWeight: FontWeight.w800,
                               letterSpacing: -0.5,
-                              color: brandRed,
+                              color: brandGold,
                             ),
                           ),
                         ],
                       ),
                       Gap(16.h),
                       Text(
-                        'Organization Sign In',
-                        style: TextStyle(fontFamily: 'PlusJakartaSans',
+                        'Restaurant Sign In',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
                           fontSize: 24.sp,
                           fontWeight: FontWeight.w700,
-                          color: isDark ? Colors.white : const Color(0xFF191C1D),
+                          color: const Color(0xFFF5F5F5),
                         ),
                       ),
                       Gap(8.h),
                       Text(
-                        'Enter your credentials to manage active branches and staff',
-                        style: TextStyle(fontFamily: 'PlusJakartaSans',
+                        'Enter your credentials to manage orders, tables, and staff',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
                           fontSize: 13.sp,
-                          color: isDark ? Colors.white54 : Colors.black54,
+                          color: const Color(0xFFABABAB),
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -235,33 +257,50 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               authState.isLoading
                                   ? const Center(
                                       child: CircularProgressIndicator(
-                                        valueColor: AlwaysStoppedAnimation<Color>(brandRed),
+                                        valueColor: AlwaysStoppedAnimation<Color>(brandGold),
                                       ),
                                     )
                                   : SizedBox(
-                                      height: 52.h,
-                                      child: FilledButton(
+                                                                           child: FilledButton(
                                         onPressed: _handleLogin,
                                         style: FilledButton.styleFrom(
-                                          backgroundColor: brandRed,
-                                          foregroundColor: Colors.white,
+                                          backgroundColor: brandGold,
+                                          foregroundColor: const Color(0xFF1F1F1F),
                                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
                                         ),
                                         child: Text(
-                                          'Sign In Organization',
-                                          style: TextStyle(fontFamily: 'PlusJakartaSans',
+                                          'Sign In to Restro POS',
+                                          style: TextStyle(fontFamily: 'Inter',
                                             fontSize: 15.sp,
                                             fontWeight: FontWeight.w700,
                                           ),
                                         ),
                                       ),
                                     ),
+                              Gap(12.h),
+                              OutlinedButton.icon(
+                                onPressed: () => _handleQuickDemoLogin(userName: 'Amrit Maurya'),
+                                icon: const Icon(Icons.flash_on, color: brandGold, size: 18),
+                                label: Text(
+                                  '⚡ One-Click Demo Mode',
+                                  style: TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 14.sp,
+                                    fontWeight: FontWeight.w700,
+                                    color: brandGold,
+                                  ),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  side: BorderSide(color: brandGold.withValues(alpha: 0.6), width: 1.5),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                                  padding: EdgeInsets.symmetric(vertical: 14.h),
+                                ),
+                              ),
                             ],
                           ),
                         ),
                       ),
 
-                      
                       // Demo shortcuts — hidden in release builds
                       if (kDebugMode) ...[
                         Gap(28.h),
@@ -276,36 +315,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               Text(
-                                '💡 DEMO ACCOUNTS (SEED DATA)',
+                                '💡 QUICK SIGN-IN PROFILES',
                                 style: TextStyle(fontFamily: 'PlusJakartaSans',
                                   fontSize: 12.sp,
                                   fontWeight: FontWeight.bold,
-                                  color: brandRed,
+                                  color: brandGold,
                                   letterSpacing: 0.5,
                                 ),
                                 textAlign: TextAlign.center,
                               ),
                               Gap(12.h),
                               _buildDemoAccountButton(
-                                'Royal Tandoor (Owner)',
+                                'Amrit Maurya (Manager)',
                                 'royaltandoor.owner@test.com',
                                 isDark,
                               ),
                               Gap(8.h),
                               _buildDemoAccountButton(
-                                'Test Cafe (Owner)',
+                                'Priya Sharma (Cashier)',
                                 'testcafe.owner@test.com',
                                 isDark,
                               ),
                               Gap(8.h),
                               _buildDemoAccountButton(
-                                'Ocean Bite (Owner)',
+                                'Rahul Verma (Server)',
                                 'oceanbite.owner@test.com',
                                 isDark,
                               ),
                               Gap(10.h),
                               Text(
-                                'Password: Test@123456',
+                                'Click any profile above to instantly sign in',
                                 style: TextStyle(fontFamily: 'PlusJakartaSans',
                                   fontSize: 11.sp,
                                   color: isDark ? Colors.white54 : Colors.black54,
@@ -331,7 +370,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return SizedBox(
       height: 38.h,
       child: OutlinedButton(
-        onPressed: () => _fillDemoCredentials(email),
+        onPressed: () => _fillDemoCredentials(label, email),
         style: OutlinedButton.styleFrom(
           side: BorderSide(color: isDark ? Colors.white24 : Colors.black12),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),

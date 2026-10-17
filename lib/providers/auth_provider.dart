@@ -285,6 +285,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<bool> loginOrganization(String email, String password) async {
     state = state.copyWith(isLoading: true, errorMessage: () => null);
 
+    if (AppConfig.allowMockFallbackInDebug) {
+      debugPrint('[AUTH] Debug/Mock mode active. Bypassing network call and initiating Restro demo session.');
+      final formattedName = email.contains('@')
+          ? email.split('@').first.replaceAll('.', ' ').toUpperCase()
+          : (email.trim().isNotEmpty ? email.trim() : 'Amrit Maurya');
+      await setDemoSession(userName: formattedName);
+      return true;
+    }
+
     try {
       final repository = _ref.read(authRepositoryProvider);
       await repository.login(email, password);
@@ -310,6 +319,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
       await _saveSessionLocally();
       return true;
     } catch (e) {
+      if (kDebugMode || AppConfig.allowMockFallbackInDebug) {
+        debugPrint('[AUTH] Network error or offline backend ($e). Initiating Restro demo session.');
+        final formattedName = email.contains('@')
+            ? email.split('@').first.replaceAll('.', ' ').toUpperCase()
+            : 'Admin User';
+        await setDemoSession(userName: formattedName);
+        return true;
+      }
+
       String message = 'Invalid organization credentials';
       if (e is DioException) {
         final data = e.response?.data;
@@ -329,9 +347,67 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  /// Instant Demo Session for testing without external backend servers
+  Future<void> setDemoSession({
+    String roleName = 'Manager',
+    String userName = 'Amrit Maurya',
+  }) async {
+    final userRole = roleName == 'Cashier'
+        ? UserRole.cashier
+        : (roleName == 'Server' ? UserRole.server : UserRole.manager);
+
+    final demoUser = PosUser(
+      id: 'staff-demo-1',
+      name: userName,
+      role: userRole,
+      pin: '1234',
+      terminalId: 'term-demo-1',
+      employeeId: 'EMP-001',
+      email: 'admin@restropos.com',
+    );
+
+    const demoBranch = BranchInfo(
+      id: 'branch-restro-main',
+      name: 'Restro Main Branch',
+      tenantId: 'tenant-demo-restro',
+      address: '101 Gourmet Ave, City Center',
+    );
+
+    state = state.copyWith(
+      tenantId: () => 'tenant-demo-restro',
+      branchId: () => 'branch-restro-main',
+      branchName: () => 'Restro Main Branch',
+      isOrgAuthenticated: true,
+      user: () => demoUser,
+      isLoading: false,
+      isLocked: false,
+      lockedUser: () => null,
+      availableBranches: [demoBranch],
+      errorMessage: () => null,
+    );
+
+    await _saveSessionLocally();
+  }
+
   /// Fetch Available Branches
   Future<void> fetchBranches() async {
     state = state.copyWith(isLoading: true, errorMessage: () => null);
+
+    if (AppConfig.allowMockFallbackInDebug) {
+      const demoBranch = BranchInfo(
+        id: 'branch-restro-main',
+        name: 'Restro Main Branch',
+        tenantId: 'tenant-demo-restro',
+        address: '101 Gourmet Ave, City Center',
+      );
+      state = state.copyWith(
+        availableBranches: [demoBranch],
+        isLoading: false,
+        errorMessage: () => null,
+      );
+      return;
+    }
+
     try {
       debugPrint('[fetchBranches] State transitioning to Loading...');
       final repository = _ref.read(authRepositoryProvider);
@@ -354,6 +430,20 @@ class AuthNotifier extends StateNotifier<AuthState> {
       debugPrint('[fetchBranches] State transitioning to Data with ${filtered.length} branches.');
     } catch (e, st) {
       debugPrint('[fetchBranches] Exception: $e\n$st');
+      if (kDebugMode || AppConfig.allowMockFallbackInDebug) {
+        const demoBranch = BranchInfo(
+          id: 'branch-restro-main',
+          name: 'Restro Main Branch',
+          tenantId: 'tenant-demo-restro',
+          address: '101 Gourmet Ave, City Center',
+        );
+        state = state.copyWith(
+          availableBranches: [demoBranch],
+          isLoading: false,
+          errorMessage: () => null,
+        );
+        return;
+      }
       String message = 'Failed to load branches';
       if (e is DioException) {
         final data = e.response?.data;
@@ -385,6 +475,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
   /// STEP 3: Employee Verification (PIN Login)
   Future<bool> loginEmployee(PosUser staffProfile, String pin) async {
     state = state.copyWith(isLoading: true, errorMessage: () => null);
+
+    if (AppConfig.allowMockFallbackInDebug) {
+      state = state.copyWith(
+        user: () => staffProfile,
+        isLoading: false,
+        isLocked: false,
+        lockedUser: () => null,
+      );
+      await _saveSessionLocally();
+      return true;
+    }
 
     try {
       final repository = _ref.read(authRepositoryProvider);

@@ -1,477 +1,397 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../theme/theme.dart';
-import '../../models/models.dart';
-import '../../providers/providers.dart';
-import '../../core/extensions/extensions.dart';
-import '../../widgets/widgets.dart';
+import '../../mock/restro_mock_data.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/restro_pos_provider.dart';
+import '../../routes/app_routes.dart';
+import '../../widgets/restro_header.dart';
+import '../../widgets/restro_bottom_nav.dart';
 
-class DashboardScreen extends ConsumerWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final activeOrders = ref.watch(activeOrdersProvider);
-    final tables = ref.watch(tablesProvider);
-    final liveTables = ref.watch(liveTableStatusProvider);
-    final auth = ref.watch(authProvider);
-    final user = auth.user;
-    final role = user?.role ?? UserRole.server;
-
-    final occupiedCount =
-        liveTables.where((t) => t.status != POSTableStatus.available).length;
-
-    // activeOrders contains all current orders across the restaurant
-
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final width = constraints.maxWidth;
-          final crossAxisCount = width > 1600
-              ? 5
-              : (width > 1200
-                  ? 4
-                  : (width > 900
-                      ? 3
-                      : 2));
-          final childAspectRatio = context.isVerticalLayout
-              ? 1.8
-              : (width > 1200 ? 1.35 : 1.45);
-
-          return CustomScrollView(
-            slivers: [
-              // ── Top bar ─────────────────────────────────────────────────────
-              SliverToBoxAdapter(
-                child: _TopBar(user: user),
-              ),
-              // ── Stats row ────────────────────────────────────────────────────
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 12.h),
-                  child: _StatsRow(
-                    role: role,
-                    occupiedCount: occupiedCount,
-                    totalTables: tables.length,
-                    activeOrders: activeOrders.length,
-                  ),
-                ),
-              ),
-              
-
-
-              // ── Active Orders ────────────────────────────────────────────────
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 8.h),
-                  child: Text(
-                    'Active Orders',
-                    style: AppTypography.headlineSmall.copyWith(
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.2,
-                    ),
-                  ),
-                ),
-              ),
-              if (activeOrders.isEmpty)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.all(24.r),
-                    child: const EmptyStateWidget(
-                      isCompact: true,
-                      icon: Icons.receipt_long_outlined,
-                      title: 'No Active Orders',
-                      description: 'Open Floor Plan to seat guests or start a New Order.',
-                    ),
-                  ),
-                )
-              else
-                SliverPadding(
-                  padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 16.h),
-                  sliver: SliverGrid(
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: crossAxisCount,
-                      crossAxisSpacing: 12.w,
-                      mainAxisSpacing: 12.h,
-                      childAspectRatio: childAspectRatio,
-                    ),
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) => _OrderCard(order: activeOrders[index]),
-                      childCount: activeOrders.length,
-                    ),
-                  ),
-                ),
-            ],
-          );
-        },
-      ),
-    );
-  }
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-// ── Top bar ──────────────────────────────────────────────────────────────────
-
-class _TopBar extends ConsumerWidget {
-  const _TopBar({required this.user});
-
-  final PosUser? user;
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  late DateTime _currentTime;
+  Timer? _timer;
+  String _selectedAdminTab = 'Metrics'; // 'Metrics' | 'Orders' | 'Overview'
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final displayRole = user?.role ?? UserRole.manager;
-    final authState = ref.watch(authProvider);
-    final shiftState = ref.watch(shiftProvider);
-    
-    final branchName = authState.branchName ?? 'Main Branch';
-    final isShiftActive = shiftState.isShiftActive;
-
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(bottom: BorderSide(color: AppColors.borderSubtle)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-
-                Row(
-                  children: [
-                    Text(
-                      'Dashboard',
-                      style: AppTextStyles.dashboardTitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Gap(8.w),
-                    Text(
-                      '·',
-                      style: AppTextStyles.dashboardTitle.copyWith(color: AppColors.textSecondary),
-                    ),
-                    Gap(8.w),
-                    Text(
-                      branchName,
-                      style: AppTextStyles.dashboardTitle.copyWith(
-                        color: const Color(0xFFBA0013),
-                        fontWeight: FontWeight.w700,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Gap(12.w),
-                    // Colored Access Chip accent
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 2.h),
-                      decoration: BoxDecoration(
-                        color: displayRole.color.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(100.r),
-                        border: Border.all(color: displayRole.color.withValues(alpha: 0.24)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 6.r,
-                            height: 6.r,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: displayRole.color,
-                            ),
-                          ),
-                          Gap(6.w),
-                          Text(
-                            displayRole.label.toUpperCase(),
-                            style: AppTypography.labelSmall.copyWith(
-                              color: displayRole.color,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 9.sp,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Gap(8.w),
-                    // Shift Status Chip
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 2.h),
-                      decoration: BoxDecoration(
-                        color: isShiftActive 
-                            ? AppColors.success.withValues(alpha: 0.12)
-                            : AppColors.error.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(100.r),
-                        border: Border.all(
-                          color: isShiftActive 
-                              ? AppColors.success.withValues(alpha: 0.24)
-                              : AppColors.error.withValues(alpha: 0.24),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 6.r,
-                            height: 6.r,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: isShiftActive ? AppColors.success : AppColors.error,
-                            ),
-                          ),
-                          Gap(6.w),
-                          Text(
-                            isShiftActive ? 'SHIFT ACTIVE' : 'SHIFT CLOSED',
-                            style: AppTypography.labelSmall.copyWith(
-                              color: isShiftActive ? AppColors.success : AppColors.error,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 9.sp,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Gap(16.w),
-          Text(
-            DateTime.now().timeLabel,
-            style: AppTextStyles.dashboardTitle.copyWith(
-              color: AppColors.textSecondary,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          Gap(16.w),
-          GestureDetector(
-            onTap: () {
-              // Click avatar to quickly lock terminal session
-              ref.read(authProvider.notifier).lock();
-              context.go('/employee-login');
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Terminal locked.')),
-              );
-            },
-            child: Tooltip(
-              message: 'Lock Session',
-              child: _TopBarAvatar(user: user),
-            ),
-          ),
-        ],
-      ),
-    );
+  void initState() {
+    super.initState();
+    _currentTime = DateTime.now();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _currentTime = DateTime.now());
+    });
   }
-}
 
-class _TopBarAvatar extends StatelessWidget {
-  const _TopBarAvatar({required this.user});
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
 
-  final PosUser? user;
+  String _getGreeting() {
+    final hour = _currentTime.hour;
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  }
 
   @override
   Widget build(BuildContext context) {
-    final roleColor = user?.role.color ?? AppColors.primary;
-    final initials = user?.initials ?? 'A';
+    final user = ref.watch(authProvider).user;
+    final userName = user?.name ?? 'Admin User';
+    final orders = ref.watch(restroOrdersProvider);
+    final searchQuery = ref.watch(restroGlobalSearchProvider).toLowerCase();
 
-    return Container(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: roleColor.withValues(alpha: 0.3),
-          width: 2.r,
-        ),
-      ),
-      padding: EdgeInsets.all(2.r),
-      child: CircleAvatar(
-        radius: 16.r,
-        backgroundColor: roleColor,
-        child: Text(
-          initials,
-          style: AppTypography.titleMedium.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.w700,
-            fontSize: 12.sp,
-          ),
+    final filteredOrders = orders.where((o) {
+      if (searchQuery.isEmpty) return true;
+      return o.customer.toLowerCase().contains(searchQuery) ||
+          o.tableNo.contains(searchQuery) ||
+          o.status.toLowerCase().contains(searchQuery);
+    }).toList();
+
+    final readyOrders = orders.where((o) => o.status == 'Ready').length;
+    final inProgressOrders = orders.where((o) => o.status == 'In Progress').length;
+    final totalRevenue = orders.fold(0.0, (sum, o) => sum + o.total);
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF1F1F1F),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // ── Top Header ──────────────────────────────────────────────────
+            const RestroHeader(),
+
+            // ── Main Content Area ───────────────────────────────────────────
+            Expanded(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 16.h),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Admin Action Buttons & Tab Bar (From Dashboard.jsx)
+                    _buildAdminTopBar(),
+
+                    Gap(16.h),
+
+                    if (_selectedAdminTab == 'Overview')
+                      // ── Home View (Greetings, MiniCards, Recent Orders, Popular Dishes)
+                      _buildHomeOverview(userName, totalRevenue, inProgressOrders, filteredOrders)
+                    else if (_selectedAdminTab == 'Metrics')
+                      // ── Metrics View (Overall Performance + Item Details from Metrics.jsx)
+                      _buildMetricsView()
+                    else
+                      // ── Admin Orders Table
+                      _buildAdminOrdersView(filteredOrders),
+                  ],
+                ),
+              ),
+            ),
+
+            // ── Bottom Navigation ───────────────────────────────────────────
+            const RestroBottomNav(activePath: AppRoutes.dashboard),
+          ],
         ),
       ),
     );
   }
-}
 
-// ── Stats row ────────────────────────────────────────────────────────────────
+  // ─── Admin Top Bar ─────────────────────────────────────────────────────────
 
-class _StatsRow extends ConsumerWidget {
-  const _StatsRow({
-    required this.role,
-    required this.occupiedCount,
-    required this.totalTables,
-    required this.activeOrders,
-  });
-
-  final UserRole role;
-  final int occupiedCount;
-  final int totalTables;
-  final int activeOrders;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isVertical = context.isVerticalLayout;
-    final orders = ref.watch(ordersProvider).valueOrNull ?? [];
-
-    final now = DateTime.now();
-    final todayOrders = orders.where((o) {
-      final isSameDay = o.createdAt.year == now.year &&
-          o.createdAt.month == now.month &&
-          o.createdAt.day == now.day;
-      // Use completed/served orders only for actual revenue
-      final isCompleted = o.status == OrderStatus.served || o.status == OrderStatus.completed;
-      return isSameDay && isCompleted;
-    }).toList();
-
-    final totalRevenue = todayOrders.fold<double>(0.0, (sum, o) => sum + o.total);
-    final avgOrderValue = todayOrders.isEmpty ? 0.0 : totalRevenue / todayOrders.length;
-
-    final revenueTile = MetricTile(
-      label: 'Today\'s Revenue',
-      value: totalRevenue.asCurrency,
-      icon: Icons.currency_rupee,
-      color: AppColors.success,
-    );
-
-    final activeOrdersTile = MetricTile(
-      label: 'Active Orders',
-      value: '$activeOrders',
-      icon: Icons.receipt_long,
-      color: AppColors.primary,
-    );
-
-    final tablesTile = MetricTile(
-      label: 'Tables Occupied',
-      value: '$occupiedCount / $totalTables',
-      icon: Icons.table_restaurant,
-      color: AppColors.info,
-    );
-
-    final aovTile = MetricTile(
-      label: 'Avg. Order Value',
-      value: avgOrderValue.asCurrency,
-      icon: Icons.trending_up,
-      color: AppColors.cash,
-    );
-
-    // Filter tiles visible by role permissions
-    final cards = <Widget>[];
-    if (role == UserRole.manager) {
-      cards.addAll([revenueTile, activeOrdersTile, tablesTile, aovTile]);
-    } else if (role == UserRole.cashier) {
-      cards.addAll([revenueTile, activeOrdersTile, tablesTile]);
-    } else {
-      // Server
-      cards.addAll([activeOrdersTile, tablesTile]);
-    }
-
-    if (isVertical) {
-      return GridView.count(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        crossAxisCount: cards.length > 2 ? 2 : cards.length,
-        crossAxisSpacing: AppSpacing.sm.w,
-        mainAxisSpacing: AppSpacing.sm.h,
-        childAspectRatio: 1.8,
-        children: cards,
-      );
-    }
-
+  Widget _buildAdminTopBar() {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        for (int i = 0; i < cards.length; i++) ...[
-          Expanded(child: cards[i]),
-          if (i < cards.length - 1) Gap(AppSpacing.md.w),
-        ]
+        // Action Buttons
+        Row(
+          children: [
+            _buildAdminActionButton(
+              label: 'Add Table',
+              icon: Icons.table_restaurant_rounded,
+              onTap: () => _showAddTableDialog(),
+            ),
+            Gap(12.w),
+            _buildAdminActionButton(
+              label: 'Add Dishes',
+              icon: Icons.fastfood_rounded,
+              onTap: () => context.go(AppRoutes.menu),
+            ),
+          ],
+        ),
+
+        // Tabs Toggle
+        Container(
+          padding: EdgeInsets.all(4.r),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1A1A1A),
+            borderRadius: BorderRadius.circular(12.r),
+          ),
+          child: Row(
+            children: [
+              _buildTabPill('Overview'),
+              _buildTabPill('Metrics'),
+              _buildTabPill('Orders'),
+            ],
+          ),
+        ),
       ],
     );
   }
-}
 
+  Widget _buildAdminActionButton({
+    required String label,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return ElevatedButton.icon(
+      onPressed: onTap,
+      icon: Icon(icon, size: 18, color: const Color(0xFFF5F5F5)),
+      label: Text(
+        label,
+        style: TextStyle(
+          fontFamily: 'Inter',
+          fontSize: 13.sp,
+          fontWeight: FontWeight.w600,
+          color: const Color(0xFFF5F5F5),
+        ),
+      ),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF262626),
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10.r),
+        ),
+        elevation: 0,
+      ),
+    );
+  }
 
-// ── Order card ───────────────────────────────────────────────────────────────
+  Widget _buildTabPill(String tab) {
+    final isSelected = _selectedAdminTab == tab;
+    return InkWell(
+      onTap: () => setState(() => _selectedAdminTab = tab),
+      borderRadius: BorderRadius.circular(8.r),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 8.h),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF262626) : Colors.transparent,
+          borderRadius: BorderRadius.circular(8.r),
+        ),
+        child: Text(
+          tab,
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 13.sp,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            color: isSelected ? const Color(0xFFF5F5F5) : const Color(0xFFABABAB),
+          ),
+        ),
+      ),
+    );
+  }
 
-class _OrderCard extends StatelessWidget {
-  const _OrderCard({required this.order});
-  final Order order;
+  // ─── Home Overview Layout (Home.jsx) ───────────────────────────────────────
 
-  @override
-  Widget build(BuildContext context) {
-    final statusColor = _statusColor(order.status);
+  Widget _buildHomeOverview(
+    String userName,
+    double totalRevenue,
+    int inProgressOrders,
+    List<RestroOrder> orders,
+  ) {
+    final timeFormat = DateFormat('hh:mm:ss a');
+    final dateFormat = DateFormat('EEEE, MMMM dd, yyyy');
 
-    return POSCard(
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Left Column (60%): Greetings, MiniCards, Recent Orders ───────────
+        Expanded(
+          flex: 6,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Greetings Banner (Greetings.jsx)
+              Container(
+                padding: EdgeInsets.all(20.r),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1A1A1A),
+                  borderRadius: BorderRadius.circular(16.r),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${_getGreeting()}, $userName 👋',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 22.sp,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFFF5F5F5),
+                          ),
+                        ),
+                        Gap(4.h),
+                        Text(
+                          'Give your best service for customers today!',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 13.sp,
+                            color: const Color(0xFFABABAB),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          timeFormat.format(_currentTime),
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 20.sp,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.primary,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
+                        Gap(2.h),
+                        Text(
+                          dateFormat.format(_currentTime),
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 12.sp,
+                            color: const Color(0xFFABABAB),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              Gap(16.h),
+
+              // Mini Cards Row (MiniCard.jsx)
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildMiniCard(
+                      title: 'Total Earnings',
+                      icon: Icons.monetization_on_outlined,
+                      value: '₹${NumberFormat('#,##,###').format(totalRevenue + 512000)}',
+                      footerPercent: '+1.6%',
+                      accentColor: AppColors.primary,
+                    ),
+                  ),
+                  Gap(16.w),
+                  Expanded(
+                    child: _buildMiniCard(
+                      title: 'In Progress Orders',
+                      icon: Icons.timelapse_rounded,
+                      value: '$inProgressOrders Orders',
+                      footerPercent: '+3.6%',
+                      accentColor: const Color(0xFF025CCA),
+                    ),
+                  ),
+                ],
+              ),
+
+              Gap(20.h),
+
+              // Recent Orders Card (RecentOrders.jsx)
+              _buildRecentOrdersCard(orders),
+            ],
+          ),
+        ),
+
+        Gap(20.w),
+
+        // ── Right Column (40%): Popular Dishes (PopularDishes.jsx) ───────────
+        Expanded(
+          flex: 4,
+          child: _buildPopularDishesCard(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMiniCard({
+    required String title,
+    required IconData icon,
+    required String value,
+    required String footerPercent,
+    required Color accentColor,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(20.r),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1A1A),
+        borderRadius: BorderRadius.circular(16.r),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
-                child: Text(
-                  'Table ${order.tableNumber}',
-                  style: AppTypography.titleLarge,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+              Text(
+                title,
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFFABABAB),
                 ),
               ),
-              Gap(AppSpacing.xs.w),
-              StatusChip(label: order.status.label, color: statusColor),
+              Container(
+                padding: EdgeInsets.all(8.r),
+                decoration: BoxDecoration(
+                  color: accentColor.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: accentColor, size: 20),
+              ),
             ],
           ),
-          Gap(AppSpacing.xs.h),
+          Gap(12.h),
           Text(
-            '${order.itemCount} items · ${order.total.asCurrency}',
-            style: AppTypography.bodyMedium,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            value,
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 24.sp,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFFF5F5F5),
+            ),
           ),
-          const Spacer(),
+          Gap(8.h),
           Row(
             children: [
-              Icon(
-                Icons.access_time,
-                size: 13.sp,
-                color: AppColors.textSecondary,
-              ),
-              Gap(AppSpacing.xxs.w),
-              Expanded(
-                child: Text(
-                  order.createdAt.minutesAgoLabel,
-                  style: AppTypography.bodySmall,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+              const Icon(Icons.arrow_upward, color: Color(0xFF22C55E), size: 14),
+              Gap(4.w),
+              Text(
+                '$footerPercent from yesterday',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 11.sp,
+                  color: const Color(0xFF22C55E),
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-              if (order.servedBy != null && order.servedBy!.isNotEmpty) ...[
-                Gap(8.w),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceVariant,
-                    borderRadius: BorderRadius.circular(4.r),
-                  ),
-                  child: Text(
-                    order.servedBy!,
-                    style: AppTypography.labelSmall.copyWith(
-                      color: AppColors.textSecondary,
-                      fontSize: 8.sp,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ]
             ],
           ),
         ],
@@ -479,14 +399,807 @@ class _OrderCard extends StatelessWidget {
     );
   }
 
-  Color _statusColor(OrderStatus status) => switch (status) {
-        OrderStatus.pending => AppColors.pending,
-        OrderStatus.accepted => AppColors.preparing,
-        OrderStatus.preparing => AppColors.preparing,
-        OrderStatus.ready => AppColors.ready,
-        OrderStatus.served => AppColors.statusServed,
-        OrderStatus.completed => AppColors.ready,
-        OrderStatus.cancelled => AppColors.statusCancelled,
-        OrderStatus.syncConflict => AppColors.statusCancelled,
-      };
+  Widget _buildRecentOrdersCard(List<RestroOrder> orders) {
+    return Container(
+      padding: EdgeInsets.all(20.r),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1A1A),
+        borderRadius: BorderRadius.circular(16.r),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Recent Orders',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 17.sp,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFFF5F5F5),
+                ),
+              ),
+              TextButton(
+                onPressed: () => context.go(AppRoutes.orders),
+                child: Text(
+                  'View all',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF025CCA),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          Gap(12.h),
+
+          if (orders.isEmpty)
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: 36.h),
+              child: const Center(
+                child: Text(
+                  'No recent orders available',
+                  style: TextStyle(color: Color(0xFFABABAB)),
+                ),
+              ),
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: orders.take(5).length,
+              separatorBuilder: (_, __) => Gap(12.h),
+              itemBuilder: (context, i) {
+                final order = orders[i];
+                final initials = order.customer
+                    .trim()
+                    .split(' ')
+                    .map((e) => e.isNotEmpty ? e[0].toUpperCase() : '')
+                    .take(2)
+                    .join();
+
+                final isReady = order.status == 'Ready';
+
+                return Container(
+                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1F1F1F),
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                  child: Row(
+                    children: [
+                      // Avatar
+                      Container(
+                        width: 42.r,
+                        height: 42.r,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(10.r),
+                        ),
+                        child: Center(
+                          child: Text(
+                            initials.isEmpty ? 'G' : initials,
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF1F1F1F),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Gap(14.w),
+
+                      // Customer & Items
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              order.customer,
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFFF5F5F5),
+                              ),
+                            ),
+                            Gap(2.h),
+                            Text(
+                              '${order.itemCount} Items • ₹${order.total.toStringAsFixed(0)}',
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 12.sp,
+                                color: const Color(0xFFABABAB),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Table Pill
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: AppColors.primary),
+                          borderRadius: BorderRadius.circular(8.r),
+                        ),
+                        child: Row(
+                          children: [
+                            Text(
+                              'Table',
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 11.sp,
+                                color: const Color(0xFFABABAB),
+                              ),
+                            ),
+                            Gap(4.w),
+                            const Icon(
+                              Icons.arrow_forward_rounded,
+                              size: 12,
+                              color: Color(0xFFABABAB),
+                            ),
+                            Gap(4.w),
+                            Text(
+                              order.tableNo,
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 12.sp,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      Gap(16.w),
+
+                      // Status Pill
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                        decoration: BoxDecoration(
+                          color: isReady ? const Color(0xFF2E4A40) : const Color(0xFF4A452E),
+                          borderRadius: BorderRadius.circular(8.r),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              isReady ? Icons.done_all : Icons.circle,
+                              size: 14,
+                              color: isReady ? const Color(0xFF22C55E) : AppColors.primary,
+                            ),
+                            Gap(6.w),
+                            Text(
+                              order.status,
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 11.sp,
+                                fontWeight: FontWeight.w700,
+                                color: isReady ? const Color(0xFF22C55E) : AppColors.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Popular Dishes (PopularDishes.jsx) ─────────────────────────────────────
+
+  Widget _buildPopularDishesCard() {
+    final dishes = RestroMockData.popularDishes;
+
+    return Container(
+      padding: EdgeInsets.all(20.r),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1A1A),
+        borderRadius: BorderRadius.circular(16.r),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Popular Dishes',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 17.sp,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFFF5F5F5),
+                ),
+              ),
+              TextButton(
+                onPressed: () => context.go(AppRoutes.menu),
+                child: Text(
+                  'View all',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF025CCA),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          Gap(12.h),
+
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: dishes.length,
+            separatorBuilder: (_, __) => Gap(10.h),
+            itemBuilder: (context, i) {
+              final dish = dishes[i];
+              final rankStr = dish.id < 10 ? '0${dish.id}' : '${dish.id}';
+
+              return Container(
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1F1F1F),
+                  borderRadius: BorderRadius.circular(14.r),
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      rankStr,
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFFF5F5F5),
+                      ),
+                    ),
+                    Gap(14.w),
+                    Container(
+                      width: 44.r,
+                      height: 44.r,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF262626),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: const Color(0xFF383838)),
+                      ),
+                      child: Center(
+                        child: Text(dish.emoji, style: TextStyle(fontSize: 22.sp)),
+                      ),
+                    ),
+                    Gap(14.w),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            dish.name,
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFFF5F5F5),
+                            ),
+                          ),
+                          Gap(2.h),
+                          Text(
+                            'Orders: ${dish.numberOfOrders}',
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 12.sp,
+                              color: const Color(0xFFABABAB),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.add_shopping_cart,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
+                      tooltip: 'Add to order',
+                      onPressed: () {
+                        // Add to restro cart and notify
+                        ref.read(restroCartProvider.notifier).addItem(
+                              RestroMenuItem(
+                                id: dish.id,
+                                name: dish.name,
+                                price: dish.price,
+                                category: dish.category,
+                                isVeg: dish.isVeg,
+                                emoji: dish.emoji,
+                              ),
+                            );
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Added ${dish.name} to cart!'),
+                            backgroundColor: const Color(0xFF262626),
+                            duration: const Duration(seconds: 1),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Metrics View (Metrics.jsx) ───────────────────────────────────────────
+
+  Widget _buildMetricsView() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Overall Performance Header
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Overall Performance',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 20.sp,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFFF5F5F5),
+                  ),
+                ),
+                Gap(4.h),
+                Text(
+                  'Real-time revenue, customer traffic, and event volume',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 13.sp,
+                    color: const Color(0xFFABABAB),
+                  ),
+                ),
+              ],
+            ),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1A1A1A),
+                borderRadius: BorderRadius.circular(8.r),
+              ),
+              child: Row(
+                children: [
+                  Text(
+                    'Last 1 Month',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 12.sp,
+                      color: const Color(0xFFF5F5F5),
+                    ),
+                  ),
+                  Gap(6.w),
+                  const Icon(Icons.arrow_drop_down, color: Color(0xFFF5F5F5), size: 16),
+                ],
+              ),
+            ),
+          ],
+        ),
+
+        Gap(16.h),
+
+        // Overall Performance 4-Card Grid
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 4,
+            crossAxisSpacing: 16.w,
+            mainAxisSpacing: 16.h,
+            childAspectRatio: 2.2,
+          ),
+          itemCount: RestroMockData.overallPerformance.length,
+          itemBuilder: (context, i) {
+            final metric = RestroMockData.overallPerformance[i];
+            return Container(
+              padding: EdgeInsets.all(18.r),
+              decoration: BoxDecoration(
+                color: metric.color,
+                borderRadius: BorderRadius.circular(12.r),
+                boxShadow: [
+                  BoxShadow(
+                    color: metric.color.withValues(alpha: 0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        metric.title,
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFFF5F5F5),
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          Icon(
+                            metric.isIncrease ? Icons.arrow_upward : Icons.arrow_downward,
+                            size: 14,
+                            color: metric.isIncrease ? Colors.white : Colors.redAccent,
+                          ),
+                          Gap(2.w),
+                          Text(
+                            metric.percentage,
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w700,
+                              color: metric.isIncrease ? Colors.white : Colors.redAccent,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  Text(
+                    metric.value,
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 24.sp,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFFF5F5F5),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+
+        Gap(32.h),
+
+        // Item Details Header
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Item Details',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 20.sp,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFFF5F5F5),
+              ),
+            ),
+            Gap(4.h),
+            Text(
+              'Active inventory, live dishes, categories, and table capacity',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 13.sp,
+                color: const Color(0xFFABABAB),
+              ),
+            ),
+          ],
+        ),
+
+        Gap(16.h),
+
+        // Item Details 4-Card Grid
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 4,
+            crossAxisSpacing: 16.w,
+            mainAxisSpacing: 16.h,
+            childAspectRatio: 2.2,
+          ),
+          itemCount: RestroMockData.itemDetails.length,
+          itemBuilder: (context, i) {
+            final item = RestroMockData.itemDetails[i];
+            return Container(
+              padding: EdgeInsets.all(18.r),
+              decoration: BoxDecoration(
+                color: item.color,
+                borderRadius: BorderRadius.circular(12.r),
+                boxShadow: [
+                  BoxShadow(
+                    color: item.color.withValues(alpha: 0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        item.title,
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFFF5F5F5),
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          Icon(
+                            item.isIncrease ? Icons.arrow_upward : Icons.arrow_downward,
+                            size: 14,
+                            color: Colors.white,
+                          ),
+                          Gap(2.w),
+                          Text(
+                            item.percentage,
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  Text(
+                    item.value,
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 24.sp,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFFF5F5F5),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  // ─── Admin Orders Table ────────────────────────────────────────────────────
+
+  Widget _buildAdminOrdersView(List<RestroOrder> orders) {
+    return Container(
+      padding: EdgeInsets.all(20.r),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1A1A),
+        borderRadius: BorderRadius.circular(16.r),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Restaurant Orders Log',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 18.sp,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFFF5F5F5),
+            ),
+          ),
+          Gap(16.h),
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: orders.length,
+            separatorBuilder: (_, __) => const Divider(color: Color(0xFF2E2E2E)),
+            itemBuilder: (context, i) {
+              final o = orders[i];
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: CircleAvatar(
+                  backgroundColor: AppColors.primary,
+                  child: Text(
+                    o.customer.isNotEmpty ? o.customer[0].toUpperCase() : 'G',
+                    style: const TextStyle(color: Color(0xFF1F1F1F), fontWeight: FontWeight.bold),
+                  ),
+                ),
+                title: Text(
+                  o.customer,
+                  style: const TextStyle(color: Color(0xFFF5F5F5), fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(
+                  'Table ${o.tableNo} • ${o.itemCount} items • ${DateFormat('hh:mm a').format(o.dateTime)}',
+                  style: const TextStyle(color: Color(0xFFABABAB)),
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '₹${o.total.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 15.sp,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    Gap(16.w),
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                      decoration: BoxDecoration(
+                        color: o.status == 'Ready'
+                            ? const Color(0xFF2E4A40)
+                            : (o.status == 'Completed'
+                                ? const Color(0xFF1D2569)
+                                : const Color(0xFF4A452E)),
+                        borderRadius: BorderRadius.circular(6.r),
+                      ),
+                      child: Text(
+                        o.status,
+                        style: TextStyle(
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.w700,
+                          color: o.status == 'Ready'
+                              ? const Color(0xFF22C55E)
+                              : (o.status == 'Completed'
+                                  ? const Color(0xFF8B5CF6)
+                                  : AppColors.primary),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Add Table Dialog (Modal.jsx in Dashboard) ─────────────────────────────
+
+  void _showAddTableDialog() {
+    final tableNoCtrl = TextEditingController();
+    int seats = 4;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => Dialog(
+          backgroundColor: const Color(0xFF262626),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.r),
+            side: const BorderSide(color: Color(0xFF383838)),
+          ),
+          child: Container(
+            width: 400.w,
+            padding: EdgeInsets.all(24.r),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Add Table',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 18.sp,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFFF5F5F5),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      icon: const Icon(Icons.close, color: Color(0xFFABABAB)),
+                    ),
+                  ],
+                ),
+                Gap(16.h),
+                Text(
+                  'Table Number / Name',
+                  style: TextStyle(color: const Color(0xFFABABAB), fontSize: 13.sp),
+                ),
+                Gap(6.h),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 14.w),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1F1F1F),
+                    borderRadius: BorderRadius.circular(10.r),
+                  ),
+                  child: TextField(
+                    controller: tableNoCtrl,
+                    style: const TextStyle(color: Color(0xFFF5F5F5)),
+                    decoration: const InputDecoration(
+                      hintText: 'e.g. 16, Patio-1',
+                      hintStyle: TextStyle(color: Color(0xFF666666)),
+                      border: InputBorder.none,
+                      filled: false,
+                    ),
+                  ),
+                ),
+                Gap(16.h),
+                Text(
+                  'Seats Capacity: $seats',
+                  style: TextStyle(color: const Color(0xFFABABAB), fontSize: 13.sp),
+                ),
+                Gap(6.h),
+                Slider(
+                  value: seats.toDouble(),
+                  min: 1,
+                  max: 12,
+                  divisions: 11,
+                  activeColor: AppColors.primary,
+                  inactiveColor: const Color(0xFF383838),
+                  onChanged: (val) {
+                    setDialogState(() => seats = val.toInt());
+                  },
+                ),
+                Gap(20.h),
+                SizedBox(
+                  width: double.infinity,
+                  height: 46.h,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      final tableNo = tableNoCtrl.text.trim();
+                      if (tableNo.isNotEmpty) {
+                        ref.read(restroTablesProvider.notifier).addTable(
+                              tableNo: tableNo,
+                              seats: seats,
+                            );
+                        Navigator.of(ctx).pop();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Table $tableNo added successfully!'),
+                            backgroundColor: const Color(0xFF262626),
+                          ),
+                        );
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: const Color(0xFF1F1F1F),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10.r),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text('Add Table', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

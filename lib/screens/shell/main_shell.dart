@@ -75,14 +75,7 @@ class MainShell extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: POSAlertOverlay(
-        child: Row(
-          children: [
-            // ── Sidebar ──────────────────────────────────────────────────────
-            const _Sidebar(isDrawer: false),
-            // ── Main content ─────────────────────────────────────────────────
-            Expanded(child: child),
-          ],
-        ),
+        child: child,
       ),
     );
   }

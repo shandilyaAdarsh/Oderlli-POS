@@ -96,7 +96,7 @@ abstract final class AppTheme {
     centerTitle: false,
     systemOverlayStyle: SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark,
+      statusBarIconBrightness: Brightness.light,
     ),
   );
 
@@ -115,8 +115,8 @@ abstract final class AppTheme {
   static final ElevatedButtonThemeData _elevatedButtonTheme =
       ElevatedButtonThemeData(
     style: ElevatedButton.styleFrom(
-      backgroundColor: AppColors.primaryContainer,
-      foregroundColor: AppColors.textOnPrimary,
+      backgroundColor: AppColors.primary,
+      foregroundColor: const Color(0xFF1F1F1F),
       elevation: 0,
       minimumSize: const Size(88, 48), // Ensure minimum 48px touch target
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),

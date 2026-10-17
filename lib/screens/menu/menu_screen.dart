@@ -3,1261 +3,842 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../theme/theme.dart';
-import '../../models/models.dart';
-import '../../providers/providers.dart';
-import '../../widgets/widgets.dart';
-import '../../constants/pos_constants.dart';
-import '../../core/extensions/extensions.dart';
+import '../../mock/restro_mock_data.dart';
+import '../../providers/customer_provider.dart';
+import '../../providers/restro_pos_provider.dart';
+import '../../routes/app_routes.dart';
+import '../../widgets/restro_header.dart';
+import '../../widgets/restro_bottom_nav.dart';
+import '../../widgets/restro_invoice_dialog.dart';
 
-/// ─── Light POS Design Palette Colors ─────────────────────────────────────────
-abstract final class LightPOSColors {
-  static const Color primary = AppColors.primary;
-  static const Color primaryLight = AppColors.primaryLight;
-  static const Color background = AppColors.background;
-  static const Color sidebarBg = AppColors.sidebarBg;
-  static const Color cardBg = AppColors.surface;
-  static const Color border = AppColors.border;
-  static const Color textPrimary = AppColors.textPrimary;
-  static const Color textSecondary = AppColors.textSecondary;
-  static const Color success = AppColors.success;
-  static const Color warning = AppColors.warning;
-  static const Color danger = AppColors.error;
-  
-  static const Color shadowColor = AppColors.shadowDeep;
-
-  static const List<BoxShadow> softShadow = [
-    BoxShadow(
-      color: Color(0x04000000),
-      blurRadius: 6,
-      offset: Offset(0, 2),
-    ),
-    BoxShadow(
-      color: Color(0x06000000),
-      blurRadius: 16,
-      offset: Offset(0, 6),
-    ),
-  ];
-
-  static const List<BoxShadow> cardShadow = [
-    BoxShadow(
-      color: Color(0x04000000),
-      blurRadius: 8,
-      offset: Offset(0, 3),
-    ),
-    BoxShadow(
-      color: Color(0x05000000),
-      blurRadius: 24,
-      offset: Offset(0, 12),
-    ),
-  ];
-}
-
-/// ─── Light POS Typography System ─────────────────────────────────────────────
-typedef LightPOSTypography = AppTextStyles;
-
-/// ─── New Order Screen ────────────────────────────────────────────────────────
-///
-/// A premium, tablet-first POS menu selector screen. Styled with a clean
-/// light operational palette, custom left sidebar, responsive central item grid,
-/// and an interactive draft checkout cart panel.
-class MenuScreen extends ConsumerWidget {
+class MenuScreen extends ConsumerStatefulWidget {
   const MenuScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final categoriesAsync = ref.watch(categoriesProvider);
-    final menuItemsAsync = ref.watch(menuItemsProvider);
-    
-    final categories = categoriesAsync.valueOrNull ?? [];
-    final selectedCat = ref.watch(selectedCategoryProvider);
-    final items = ref.watch(searchedMenuItemsProvider);
-    final cartState = ref.watch(posCartProvider);
-    
-    // Watch active table metadata
-    final tableId = ref.watch(activeTableIdProvider);
-    final tables = ref.watch(posTablesProvider).valueOrNull ?? [];
+  ConsumerState<MenuScreen> createState() => _MenuScreenState();
+}
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (tableId != null && ref.read(cartSelectedTableProvider) != tableId) {
-        ref.read(cartSelectedTableProvider.notifier).state = tableId;
-      }
-    });
+class _MenuScreenState extends ConsumerState<MenuScreen> {
+  int _selectedCategoryId = 1;
+  String _searchQuery = '';
+  final _searchCtrl = TextEditingController();
 
-    TableModel? activeTable;
-    if (tableId != null && tables.isNotEmpty) {
-      for (final table in tables) {
-        if (table.id == tableId) {
-          activeTable = table;
-          break;
-        }
-      }
-    }
-    final isCounterOrder =
-        tableId != null && ref.read(counterTableProvider)?.id == tableId;
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
 
-    final isVertical = context.isVerticalLayout;
-
-    ref.listen<POSCartState>(posCartProvider, (previous, next) {
-      if (next.errorMessage != null && next.errorMessage != previous?.errorMessage) {
-        context.showErrorSnack(next.errorMessage!);
-      }
-    });
-
-    // Center grid contents
-    final menuGridContent = Container(
-      color: LightPOSColors.background,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Header & Search Row ────────────────────────────────────────────
-          Padding(
-            padding: EdgeInsets.fromLTRB(16.r, 16.r, 16.r, 0),
-            child: POSHeader(activeTable: activeTable, isCounterOrder: isCounterOrder),
-          ),
-          
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16.r, vertical: 8.h),
-            child: POSSearchBar(
-              onChanged: (q) => ref.read(menuSearchQueryProvider.notifier).state = q,
-            ),
-          ),
-
-          // ── Categories Bar ────────────────────────────────────────────────
-          Container(
-            height: 46.h,
-            margin: EdgeInsets.only(bottom: 8.h),
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: EdgeInsets.symmetric(horizontal: 16.w),
-              itemCount: categories.length + 1,
-              itemBuilder: (context, index) {
-                final isAll = index == 0;
-                final isSelected = isAll ? selectedCat == null : selectedCat == categories[index - 1].id;
-                final label = isAll ? 'All Dishes' : categories[index - 1].name;
-                final icon = isAll ? '🍽️' : categories[index - 1].icon;
-                final catId = isAll ? null : categories[index - 1].id;
-
-                return Padding(
-                  padding: EdgeInsets.only(right: AppSpacing.xs.w),
-                  child: CategoryChip(
-                    label: label,
-                    icon: icon,
-                    isSelected: isSelected,
-                    onSelected: () => ref.read(selectedCategoryProvider.notifier).state = catId,
-                  ),
-                );
-              },
-            ),
-          ),
-
-          // ── Menu Items Grid ───────────────────────────────────────────────
-          Expanded(
-            child: menuItemsAsync.when(
-              loading: () => const Center(
-                child: CircularProgressIndicator(
-                  color: LightPOSColors.primary,
-                ),
-              ),
-              error: (err, stack) => Center(
-                child: Padding(
-                  padding: EdgeInsets.all(24.r),
-                  child: EmptyStateWidget(
-                    icon: Icons.wifi_off_outlined,
-                    title: 'Connection Error',
-                    description: 'Failed to fetch menu items from the server. Please check your connection.\n$err',
-                  ),
-                ),
-              ),
-              data: (_) {
-                if (items.isEmpty) {
-                  return const Center(
-                    child: EmptyStateWidget(
-                      icon: Icons.search_off_outlined,
-                      title: 'No Items Found',
-                      description: 'No menu products match your search query or selected category filter.',
-                    ),
-                  );
-                }
-                return LayoutBuilder(
-                  builder: (context, constraints) {
-                    final width = constraints.maxWidth;
-                    final crossAxisCount = width > 1600
-                        ? 5
-                        : (width > 1200
-                            ? 4
-                            : (width > 900 ? 3 : 2));
-                    // Dynamically calculate aspect ratio so card details never overflow
-                    final cardWidth = (width - 32.r - (crossAxisCount - 1) * 12.w) / crossAxisCount;
-                    // Ensure card height is at least 195.h to prevent vertical layout overflows in the details container
-                    final cardHeight = (cardWidth * 1.15).clamp(195.h, 240.h);
-                    final childAspectRatio = cardWidth / cardHeight;
-
-                    return GridView.builder(
-                      padding: EdgeInsets.all(16.r),
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: crossAxisCount,
-                        crossAxisSpacing: 12.w,
-                        mainAxisSpacing: 12.h,
-                        childAspectRatio: childAspectRatio,
-                      ),
-                      itemCount: items.length,
-                      itemBuilder: (context, i) {
-                        final item = items[i];
-                        final cartIndex = cartState.items.indexWhere((c) => c.menuItem.id == item.id);
-                        final qtyInCart = cartIndex >= 0 ? cartState.items[cartIndex].qty : 0;
-
-                        return MenuItemCard(
-                          item: item,
-                          qtyInCart: qtyInCart,
-                          onAdd: () {
-                            if (item.modifierGroups.isNotEmpty) {
-                              showDialog(
-                                context: context,
-                                builder: (_) => ModifierSelectionDialog(item: item),
-                              );
-                            } else {
-                              ref.read(posCartProvider.notifier).addItem(item);
-                            }
-                          },
-                        );
-                      },
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-
-    // If Portrait view or Narrow screen, wrap in simple vertical column
-    if (isVertical) {
-      return Scaffold(
-        backgroundColor: Colors.transparent,
-        body: SafeArea(child: menuGridContent),
-        floatingActionButton: Badge(
-          label: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
-            child: Text(
-              '',
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-            ),
-          ),
-          isLabelVisible: cartState.items.isNotEmpty,
-          backgroundColor: LightPOSColors.primary,
-          child: FloatingActionButton(
-            onPressed: () => context.go('/cart'),
-            backgroundColor: LightPOSColors.primary,
-            foregroundColor: Colors.white,
-            child: const Icon(Icons.shopping_cart_outlined),
-          ),
+  void _handlePlaceOrder({
+    required CustomerDetails customer,
+    required List<RestroCartLineItem> cartItems,
+    required double subtotal,
+    required double tax,
+    required double total,
+    required String paymentMethod,
+  }) {
+    if (cartItems.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cart is empty. Please add items to place an order.'),
+          backgroundColor: Color(0xFFEF4444),
         ),
       );
+      return;
     }
 
-    // Tablet-First Landscape Layout
+    final tableNo = customer.tableNo ?? 'Counter';
+    final customerName = customer.name?.isNotEmpty == true ? customer.name! : 'Walk-in Guest';
+    final customerPhone = customer.phone ?? '';
+    final guests = customer.guests;
+    final orderId = '${DateTime.now().millisecondsSinceEpoch}';
+
+    // 1. Add order to Restro Orders provider
+    ref.read(restroOrdersProvider.notifier).addOrder(
+          customer: customerName,
+          tableNo: tableNo,
+          total: total,
+          itemNames: cartItems.map((e) => '${e.item.name} (${e.quantity})').toList(),
+        );
+
+    // 2. Mark table as booked
+    if (tableNo != 'Counter') {
+      ref.read(restroTablesProvider.notifier).bookTable(
+            tableNo: tableNo,
+            customerName: customerName,
+            customerPhone: customerPhone,
+            total: total,
+          );
+    }
+
+    // 3. Open Invoice Receipt Dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => RestroInvoiceDialog(
+        orderId: orderId,
+        customerName: customerName,
+        customerPhone: customerPhone,
+        guests: guests,
+        tableNo: tableNo,
+        items: List.of(cartItems),
+        subtotal: subtotal,
+        tax: tax,
+        total: total,
+        paymentMethod: paymentMethod,
+        onPrint: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Receipt sent to thermal POS printer.'),
+              backgroundColor: Color(0xFF262626),
+            ),
+          );
+        },
+      ),
+    ).then((_) {
+      // 4. Clear cart and active customer
+      ref.read(restroCartProvider.notifier).clear();
+      ref.read(customerDetailsProvider.notifier).clear();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final customer = ref.watch(customerDetailsProvider);
+    final cartItems = ref.watch(restroCartProvider);
+    final subtotal = ref.watch(restroCartSubtotalProvider);
+    final tax = ref.watch(restroCartTaxProvider);
+    final total = ref.watch(restroCartTotalProvider);
+    final paymentMethod = ref.watch(restroPaymentMethodProvider);
+
+    final categories = RestroMockData.categories;
+    final currentCategory = categories.firstWhere(
+      (c) => c.id == _selectedCategoryId,
+      orElse: () => categories.first,
+    );
+
+    final allItems = currentCategory.items.where((item) {
+      if (_searchQuery.isEmpty) return true;
+      return item.name.toLowerCase().contains(_searchQuery.toLowerCase());
+    }).toList();
+
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Row(
-        children: [
-          // ── 1. Menu Catalog Workspace (Left) ─────────────────────────────
-          Expanded(
-            child: menuGridContent,
-          ),
-
-          // Divider
-          Container(width: 1.w, color: LightPOSColors.border),
-
-          // ── 2. Active Checkout Cart Panel (Right) — fixed width for robust landscape proportions
-          SizedBox(
-            width: AppLayoutConstants.orderPanelWidth.w,
-            child: OrderCartPanel(
-              cartState: cartState,
-              activeTable: activeTable,
-              isCounterOrder: isCounterOrder,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-
-/// ─── Component: POSHeader ───────────────────────────────────────────────────
-class POSHeader extends StatelessWidget {
-  const POSHeader({super.key, this.activeTable, this.isCounterOrder = false});
-
-  final dynamic activeTable;
-  final bool isCounterOrder;
-
-  @override
-  Widget build(BuildContext context) {
-    final hasTable = activeTable != null || isCounterOrder;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('New Order', style: LightPOSTypography.headlineLarge),
-        Gap(AppSpacing.xxs.h),
-        Wrap(
-          spacing: 4.w,
-          runSpacing: 4.h,
-          crossAxisAlignment: WrapCrossAlignment.center,
+      backgroundColor: const Color(0xFF1F1F1F),
+      body: SafeArea(
+        child: Column(
           children: [
+            // ── Top Header ──────────────────────────────────────────────────
+            const RestroHeader(),
 
-            _buildMetadataItem(
-              Icons.table_bar_outlined,
-              isCounterOrder
-                  ? PosConstants.counterTableName
-                  : (activeTable != null ? '${activeTable.tableName}' : 'Quick Order'),
-            ),
-            if (hasTable && !isCounterOrder && activeTable != null) ...[
-              _buildDotSeparator(),
-              _buildMetadataItem(Icons.people_outline, '${activeTable.guestCount} Guests'),
-            ],
-            _buildDotSeparator(),
-            _buildMetadataItem(Icons.delivery_dining_outlined, 'Dine-In'),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMetadataItem(IconData icon, String text) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: LightPOSColors.textSecondary, size: 13.sp),
-        Gap(4.w),
-        Text(text, style: LightPOSTypography.bodySmall),
-      ],
-    );
-  }
-
-  Widget _buildDotSeparator() {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm.w),
-      child: Text(
-        '•',
-        style: TextStyle(color: LightPOSColors.textSecondary, fontSize: 12.sp),
-      ),
-    );
-  }
-}
-
-/// ─── Component: POSSearchBar ────────────────────────────────────────────────
-class POSSearchBar extends StatelessWidget {
-  const POSSearchBar({super.key, required this.onChanged});
-
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusMD.r),
-        boxShadow: LightPOSColors.softShadow,
-      ),
-      child: TextField(
-        onChanged: onChanged,
-        style: LightPOSTypography.bodyMedium,
-        decoration: InputDecoration(
-          hintText: 'Search menu dishes, beverages, toppings...',
-          hintStyle: LightPOSTypography.bodySmall,
-          prefixIcon: const Icon(Icons.search, color: LightPOSColors.textSecondary),
-          contentPadding: EdgeInsets.symmetric(vertical: 14.h, horizontal: AppSpacing.md.w),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(AppSpacing.radiusMD.r),
-            borderSide: const BorderSide(color: LightPOSColors.border),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(AppSpacing.radiusMD.r),
-            borderSide: const BorderSide(color: LightPOSColors.border),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(AppSpacing.radiusMD.r),
-            borderSide: const BorderSide(color: LightPOSColors.primary, width: 1.5),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// ─── Component: CategoryChip ────────────────────────────────────────────────
-class CategoryChip extends StatelessWidget {
-  const CategoryChip({
-    super.key,
-    required this.label,
-    required this.icon,
-    required this.isSelected,
-    required this.onSelected,
-  });
-
-  final String label;
-  final String icon;
-  final bool isSelected;
-  final VoidCallback onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: isSelected
-            ? const LinearGradient(
-                colors: [LightPOSColors.primary, LightPOSColors.primaryLight],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              )
-            : null,
-        color: isSelected ? null : Colors.white,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusMD.r),
-        border: isSelected ? null : Border.all(color: LightPOSColors.border),
-        boxShadow: isSelected
-            ? [
-                BoxShadow(
-                  color: LightPOSColors.primary.withValues(alpha: 0.2),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                )
-              ]
-            : LightPOSColors.softShadow,
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusMD.r),
-        child: InkWell(
-          onTap: onSelected,
-          borderRadius: BorderRadius.circular(AppSpacing.radiusMD.r),
-          child: Container(
-            constraints: BoxConstraints(minHeight: 44.h),
-            padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w, vertical: AppSpacing.xs.h),
-            alignment: Alignment.center,
-            child: Row(
-              children: [
-                Text(icon, style: TextStyle(fontSize: 16.sp)),
-                Gap(AppSpacing.xs.w),
-                Text(
-                  label,
-                  style: LightPOSTypography.titleMedium.copyWith(
-                    color: isSelected ? Colors.white : LightPOSColors.textPrimary,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// ─── Component: MenuItemCard ────────────────────────────────────────────────
-class MenuItemCard extends StatelessWidget {
-  const MenuItemCard({
-    super.key,
-    required this.item,
-    required this.qtyInCart,
-    required this.onAdd,
-  });
-
-  final MenuItem item;
-  final int qtyInCart;
-  final VoidCallback onAdd;
-
-  @override
-  Widget build(BuildContext context) {
-    final hasInCart = qtyInCart > 0;
-
-    return Container(
-      constraints: BoxConstraints(minHeight: 180.h),
-      decoration: BoxDecoration(
-        color: LightPOSColors.cardBg,
-        borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(
-          color: hasInCart ? LightPOSColors.primary : LightPOSColors.border,
-          width: hasInCart ? 1.5 : 1,
-        ),
-        boxShadow: hasInCart
-            ? [
-                BoxShadow(
-                  color: LightPOSColors.primary.withValues(alpha: 0.08),
-                  blurRadius: 16,
-                  offset: const Offset(0, 6),
-                )
-              ]
-            : LightPOSColors.cardShadow,
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16.r),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16.r),
-          onTap: onAdd,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Image / Emoji Area
-              Expanded(
-                child: Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: LightPOSColors.background,
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(15.r)),
-                  ),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      // Emoji Container
-                      Container(
-                        width: 58.r,
-                        height: 58.r,
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Color(0x05000000),
-                              blurRadius: 8,
-                              offset: Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          _getCategoryEmoji(item.categoryId),
-                          style: TextStyle(fontSize: 28.sp),
-                        ),
-                      ),
-                      
-                      // Cart item quantity indicator (top-right badge)
-                      if (hasInCart)
-                        Positioned(
-                          top: AppSpacing.sm.h,
-                          right: AppSpacing.sm.w,
-                          child: Container(
-                            padding: EdgeInsets.symmetric(horizontal: AppSpacing.xs.w, vertical: AppSpacing.xxs.h),
-                            decoration: BoxDecoration(
-                              color: LightPOSColors.primary,
-                              borderRadius: BorderRadius.circular(AppSpacing.radiusSM.r),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: LightPOSColors.primary.withValues(alpha: 0.4),
-                                  blurRadius: 8,
-                                )
-                              ],
-                            ),
-                            child: Text(
-                              '${qtyInCart}x',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-              
-              // Details
-              Expanded(
-                child: Padding(
-                  padding: EdgeInsets.all(AppSpacing.sm.r),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Flexible(
-                        child: Text(
-                          item.name,
-                          style: LightPOSTypography.titleMedium,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            item.price.asCurrency,
-                            style: LightPOSTypography.headlineMedium.copyWith(
-                              color: LightPOSColors.primary,
-                              fontSize: 15.sp,
-                            ),
-                          ),
-                          // Floating Add Button
-                          IconButton(
-                            onPressed: onAdd,
-                            icon: const Icon(Icons.add, color: Colors.white, size: 18),
-                            style: IconButton.styleFrom(
-                              backgroundColor: LightPOSColors.primary,
-                              minimumSize: Size(36.w, 36.h),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(AppSpacing.radiusSM.r),
-                              ),
-                              padding: EdgeInsets.zero,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  String _getCategoryEmoji(String categoryId) {
-    return switch (categoryId) {
-      'cat-1' => '🥗',
-      'cat-2' => '🥩',
-      'cat-3' => '🍗',
-      'cat-4' => '🍝',
-      'cat-5' => '🍕',
-      'cat-6' => '🍮',
-      'cat-7' => '🥤',
-      'cat-8' => '🍟',
-      _ => '🍔',
-    };
-  }
-}
-
-/// ─── Component: OrderCartPanel ──────────────────────────────────────────────
-class OrderCartPanel extends ConsumerStatefulWidget {
-  const OrderCartPanel({
-    super.key,
-    required this.cartState,
-    this.activeTable,
-    this.isCounterOrder = false,
-  });
-
-  final POSCartState cartState;
-  final dynamic activeTable;
-  final bool isCounterOrder;
-
-  @override
-  ConsumerState<OrderCartPanel> createState() => _OrderCartPanelState();
-}
-
-class _OrderCartPanelState extends ConsumerState<OrderCartPanel> {
-  final TextEditingController _notesController = TextEditingController();
-  bool _isAlreadyOrderedExpanded = true;
-
-  @override
-  void didUpdateWidget(OrderCartPanel oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.activeTable?.id != oldWidget.activeTable?.id) {
-      _isAlreadyOrderedExpanded = true;
-    }
-  }
-
-  Widget _buildAlreadyOrderedSection() {
-    final tableId = ref.watch(cartSelectedTableProvider) ?? ref.watch(activeTableIdProvider);
-    if (tableId == null || ref.read(counterTableProvider)?.id == tableId) {
-      return const SizedBox.shrink();
-    }
-
-    final activeOrder = ref.watch(activeTableOrderProvider);
-    if (activeOrder == null) {
-      return const SizedBox.shrink();
-    }
-
-    final billState = ref.watch(activeBillProvider);
-    final bool isHydrated = billState != null &&
-        billState.order.id == activeOrder.id &&
-        billState.paymentsHydrated;
-
-    return Container(
-      margin: EdgeInsets.only(bottom: AppSpacing.md.h),
-      decoration: BoxDecoration(
-        color: LightPOSColors.background,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusMD.r),
-        border: Border.all(color: LightPOSColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          InkWell(
-            onTap: () {
-              setState(() {
-                _isAlreadyOrderedExpanded = !_isAlreadyOrderedExpanded;
-              });
-            },
-            borderRadius: BorderRadius.circular(AppSpacing.radiusMD.r),
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w, vertical: AppSpacing.sm.h),
+            // ── Split Menu & Billing View ───────────────────────────────────
+            Expanded(
               child: Row(
                 children: [
-                  const Icon(Icons.soup_kitchen_outlined, color: LightPOSColors.primary, size: 16),
-                  Gap(8.w),
+                  // ── Left: Menu Selection Panel (65%) ────────────────────────
                   Expanded(
+                    flex: 65,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Already Sent to Kitchen',
-                          style: LightPOSTypography.titleMedium.copyWith(color: LightPOSColors.primary),
-                        ),
-                        Text(
-                          'Order #${activeOrder.orderNumber ?? (activeOrder.id.length > 8 ? activeOrder.id.substring(0, 8) : activeOrder.id)}',
-                          style: LightPOSTypography.bodySmall,
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(
-                    _isAlreadyOrderedExpanded ? Icons.expand_less : Icons.expand_more,
-                    color: LightPOSColors.textSecondary,
-                    size: 20,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (_isAlreadyOrderedExpanded) ...[
-            const Divider(height: 1, color: LightPOSColors.border),
-            if (!isHydrated)
-              Padding(
-                padding: EdgeInsets.all(AppSpacing.md.r),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(LightPOSColors.primary),
-                      ),
-                    ),
-                    Gap(8),
-                    Text('Loading items...', style: TextStyle(fontSize: 12, color: LightPOSColors.textSecondary)),
-                  ],
-                ),
-              )
-            else ...[
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w, vertical: AppSpacing.sm.h),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: billState.order.items.length,
-                      separatorBuilder: (_, _) => Divider(color: LightPOSColors.border.withValues(alpha: 0.5), height: AppSpacing.sm.h),
-                      itemBuilder: (context, idx) {
-                        final item = billState.order.items[idx];
-                        return Row(
-                          children: [
-                            Text('${item.quantity}× ', style: LightPOSTypography.titleMedium.copyWith(color: LightPOSColors.primary)),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                        // Top Subheader (Back Button, Menu Title & Customer Pill)
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
                                 children: [
-                                  Text(item.menuItem.name, style: LightPOSTypography.bodyMedium),
-                                  if (item.modifiers.isNotEmpty)
-                                    Text(
-                                      item.modifiers.join(', '),
-                                      style: LightPOSTypography.bodySmall.copyWith(fontSize: 9.sp),
+                                  InkWell(
+                                    onTap: () => context.go(AppRoutes.floor),
+                                    borderRadius: BorderRadius.circular(10.r),
+                                    child: Container(
+                                      padding: EdgeInsets.all(8.r),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF262626),
+                                        borderRadius: BorderRadius.circular(10.r),
+                                      ),
+                                      child: const Icon(
+                                        Icons.arrow_back_ios_new,
+                                        color: Color(0xFFF5F5F5),
+                                        size: 18,
+                                      ),
                                     ),
+                                  ),
+                                  Gap(16.w),
+                                  Text(
+                                    'Menu',
+                                    style: TextStyle(
+                                      fontFamily: 'Inter',
+                                      fontSize: 22.sp,
+                                      fontWeight: FontWeight.w700,
+                                      color: const Color(0xFFF5F5F5),
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
                                 ],
                               ),
-                            ),
-                            Text(
-                              (item.menuItem.price * item.quantity).asCurrency,
-                              style: LightPOSTypography.bodyMedium.copyWith(fontWeight: FontWeight.bold),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                    Gap(8.h),
-                    const Divider(height: 1, color: LightPOSColors.border),
-                    Gap(8.h),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Order Total', style: LightPOSTypography.titleMedium),
-                        Text(
-                          billState.total.asCurrency,
-                          style: LightPOSTypography.titleMedium.copyWith(
-                            color: LightPOSColors.primary,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Gap(8.h),
-                    Container(
-                      padding: EdgeInsets.all(AppSpacing.xs.r),
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: LightPOSColors.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(AppSpacing.radiusSM.r),
-                      ),
-                      child: Text(
-                        'Submitted — view only. Add new items below to start a new round.',
-                        style: LightPOSTypography.bodySmall.copyWith(
-                          color: LightPOSColors.primary,
-                          fontSize: 9.5.sp,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ],
-        ],
-      ),
-    );
-  }
 
-  @override
-  Widget build(BuildContext context) {
-    final cartItems = widget.cartState.items;
-
-    return Container(
-      color: LightPOSColors.sidebarBg,
-      padding: EdgeInsets.all(AppSpacing.lg.r),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Panel Title Header
-          Row(
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Current Order', style: LightPOSTypography.titleLarge),
-                  Text(
-                    widget.isCounterOrder
-                        ? '${PosConstants.counterTableName} Checkout'
-                        : (widget.activeTable != null
-                            ? '${widget.activeTable.tableName} Checkout'
-                            : 'Quick Walk-In Checkout'),
-                    style: LightPOSTypography.bodySmall,
-                  ),
-                ],
-              ),
-              const Spacer(),
-              if (cartItems.isNotEmpty)
-                IconButton(
-                  onPressed: () {
-                    ref.read(posCartProvider.notifier).clear();
-                    _notesController.clear();
-                  },
-                  icon: const Icon(Icons.delete_sweep_outlined, color: LightPOSColors.danger),
-                  tooltip: 'Clear Cart',
-                ),
-            ],
-          ),
-          
-          Gap(AppSpacing.md.h),
-          const Divider(height: 1, color: LightPOSColors.border),
-          Gap(AppSpacing.md.h),
-
-          _buildAlreadyOrderedSection(),
-
-          // Scrollable Cart Items
-          Expanded(
-            child: cartItems.isEmpty
-                ? const Center(
-                    child: EmptyStateWidget(
-                      icon: Icons.shopping_basket_outlined,
-                      title: 'Order Cart is Empty',
-                      description: 'Tap the floating add button (+) on any menu dish to compile the ticket.',
-                    ),
-                  )
-                : ListView.separated(
-                    itemCount: cartItems.length,
-                    separatorBuilder: (_, _) => Divider(color: LightPOSColors.border, height: AppSpacing.md.h),
-                    itemBuilder: (context, i) {
-                      final item = cartItems[i];
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Item main row
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                              // Active Customer & Table Indicator Pill
+                              Container(
+                                padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF262626),
+                                  borderRadius: BorderRadius.circular(30.r),
+                                  border: Border.all(color: const Color(0xFF383838)),
+                                ),
+                                child: Row(
                                   children: [
-                                    Text(item.menuItem.name, style: LightPOSTypography.titleMedium),
-                                    Text(item.menuItem.price.asCurrency, style: LightPOSTypography.bodySmall),
+                                    const Icon(
+                                      Icons.person_outline,
+                                      color: AppColors.primary,
+                                      size: 18,
+                                    ),
+                                    Gap(8.w),
+                                    Text(
+                                      customer.name?.isNotEmpty == true
+                                          ? customer.name!
+                                          : 'Walk-in Guest',
+                                      style: TextStyle(
+                                        fontFamily: 'Inter',
+                                        fontSize: 13.sp,
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(0xFFF5F5F5),
+                                      ),
+                                    ),
+                                    Gap(12.w),
+                                    Container(
+                                      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary.withValues(alpha: 0.2),
+                                        borderRadius: BorderRadius.circular(6.r),
+                                      ),
+                                      child: Text(
+                                        'Table: ${customer.tableNo ?? "Counter"}',
+                                        style: TextStyle(
+                                          fontFamily: 'Inter',
+                                          fontSize: 12.sp,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
-                              // Qty Adjustment Buttons
-                              Row(
-                                children: [
-                                  IconButton(
-                                    onPressed: () => ref.read(posCartProvider.notifier).removeItem(item.menuItem),
-                                    icon: const Icon(Icons.remove, size: 14),
-                                    style: IconButton.styleFrom(
-                                      backgroundColor: LightPOSColors.background,
-                                      minimumSize: Size(44.w, 44.h),
+                            ],
+                          ),
+                        ),
+
+                        // Categories Horizontal Scroll Bar (MenuContainer.jsx)
+                        SizedBox(
+                          height: 52.h,
+                          child: ListView.separated(
+                            padding: EdgeInsets.symmetric(horizontal: 24.w),
+                            scrollDirection: Axis.horizontal,
+                            itemCount: categories.length,
+                            separatorBuilder: (_, __) => Gap(12.w),
+                            itemBuilder: (context, i) {
+                              final cat = categories[i];
+                              final isSelected = cat.id == _selectedCategoryId;
+
+                              return InkWell(
+                                onTap: () => setState(() => _selectedCategoryId = cat.id),
+                                borderRadius: BorderRadius.circular(14.r),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 150),
+                                  padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 10.h),
+                                  decoration: BoxDecoration(
+                                    color: isSelected ? cat.bgColor : const Color(0xFF262626),
+                                    borderRadius: BorderRadius.circular(14.r),
+                                    border: Border.all(
+                                      color: isSelected ? Colors.transparent : const Color(0xFF383838),
                                     ),
+                                    boxShadow: [
+                                      if (isSelected)
+                                        BoxShadow(
+                                          color: cat.bgColor.withValues(alpha: 0.4),
+                                          blurRadius: 10,
+                                          offset: const Offset(0, 3),
+                                        ),
+                                    ],
                                   ),
-                                  Padding(
-                                    padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm.w),
-                                    child: Text('${item.qty}', style: LightPOSTypography.titleMedium),
+                                  child: Row(
+                                    children: [
+                                      Text(cat.icon, style: TextStyle(fontSize: 18.sp)),
+                                      Gap(8.w),
+                                      Text(
+                                        cat.name,
+                                        style: TextStyle(
+                                          fontFamily: 'Inter',
+                                          fontSize: 13.sp,
+                                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                          color: const Color(0xFFF5F5F5),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  IconButton(
-                                    onPressed: () => ref.read(posCartProvider.notifier).addItem(item.menuItem),
-                                    icon: const Icon(Icons.add, size: 14),
-                                    style: IconButton.styleFrom(
-                                      backgroundColor: LightPOSColors.background,
-                                      minimumSize: Size(44.w, 44.h),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+
+                        Gap(16.h),
+
+                        // Dish Items Grid
+                        Expanded(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 24.w),
+                            child: allItems.isEmpty
+                                ? const Center(
+                                    child: Text(
+                                      'No dishes found in this category.',
+                                      style: TextStyle(color: Color(0xFFABABAB)),
+                                    ),
+                                  )
+                                : GridView.builder(
+                                    padding: EdgeInsets.only(bottom: 24.h),
+                                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: 3,
+                                      crossAxisSpacing: 16.w,
+                                      mainAxisSpacing: 16.h,
+                                      childAspectRatio: 1.35,
+                                    ),
+                                    itemCount: allItems.length,
+                                    itemBuilder: (context, i) {
+                                      final item = allItems[i];
+                                      return _buildDishCard(item, cartItems);
+                                    },
+                                  ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // ── Right: Cart & Billing Panel (35%) (CartInfo.jsx & Bill.jsx) ──
+                  Expanded(
+                    flex: 35,
+                    child: Container(
+                      margin: EdgeInsets.fromLTRB(0, 12.h, 24.w, 12.h),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1A1A1A),
+                        borderRadius: BorderRadius.circular(16.r),
+                        border: Border.all(color: const Color(0xFF2E2E2E)),
+                      ),
+                      padding: EdgeInsets.all(20.r),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Customer Info Section (CustomerInfo.jsx)
+                          _buildCustomerInfoSection(customer),
+
+                          const Divider(color: Color(0xFF2E2E2E), thickness: 1),
+                          Gap(8.h),
+
+                          // Cart Items Header
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Order Items (${cartItems.length})',
+                                style: TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontSize: 15.sp,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFFF5F5F5),
+                                ),
+                              ),
+                              if (cartItems.isNotEmpty)
+                                TextButton(
+                                  onPressed: () => ref.read(restroCartProvider.notifier).clear(),
+                                  child: const Text(
+                                    'Clear all',
+                                    style: TextStyle(color: Color(0xFFEF4444), fontSize: 12),
+                                  ),
+                                ),
+                            ],
+                          ),
+
+                          Gap(8.h),
+
+                          // Scrollable Cart Items (CartInfo.jsx)
+                          Expanded(
+                            child: cartItems.isEmpty
+                                ? Center(
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.shopping_bag_outlined,
+                                          size: 40.sp,
+                                          color: const Color(0xFF555555),
+                                        ),
+                                        Gap(8.h),
+                                        Text(
+                                          'No items in order',
+                                          style: TextStyle(
+                                            fontFamily: 'Inter',
+                                            fontSize: 13.sp,
+                                            color: const Color(0xFF888888),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                : ListView.separated(
+                                    itemCount: cartItems.length,
+                                    separatorBuilder: (_, __) => Gap(10.h),
+                                    itemBuilder: (context, i) {
+                                      final line = cartItems[i];
+                                      return _buildCartItemTile(line);
+                                    },
+                                  ),
+                          ),
+
+                          const Divider(color: Color(0xFF2E2E2E), thickness: 1),
+                          Gap(10.h),
+
+                          // Bill Summary & Taxes (Bill.jsx)
+                          _buildBillSummary(subtotal, tax, total),
+
+                          Gap(14.h),
+
+                          // Payment Method Selector (Cash / Online / Card)
+                          _buildPaymentMethodSelector(paymentMethod),
+
+                          Gap(16.h),
+
+                          // Place Order Button (Bill.jsx)
+                          SizedBox(
+                            width: double.infinity,
+                            height: 50.h,
+                            child: ElevatedButton(
+                              onPressed: () => _handlePlaceOrder(
+                                customer: customer,
+                                cartItems: cartItems,
+                                subtotal: subtotal,
+                                tax: tax,
+                                total: total,
+                                paymentMethod: paymentMethod,
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: const Color(0xFF1F1F1F),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12.r),
+                                ),
+                                elevation: 0,
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(Icons.check_circle_outline, size: 20),
+                                  Gap(8.w),
+                                  Text(
+                                    'Place Order & Print Bill',
+                                    style: TextStyle(
+                                      fontFamily: 'Inter',
+                                      fontSize: 15.sp,
+                                      fontWeight: FontWeight.w700,
                                     ),
                                   ),
                                 ],
                               ),
-                            ],
+                            ),
                           ),
-                          Gap(AppSpacing.xs.h),
-
-                          // Modifiers selection section
-                          _buildModifiersRow(item),
                         ],
-                      );
-                    },
+                      ),
+                    ),
                   ),
-          ),
-          
-          const Divider(height: 1, color: LightPOSColors.border),
-          Gap(AppSpacing.md.h),
-
-          // Order Notes Section
-          if (cartItems.isNotEmpty) ...[
-            Text('KITCHEN NOTES', style: LightPOSTypography.labelSmall.copyWith(color: LightPOSColors.textSecondary, letterSpacing: 0.5)),
-            Gap(AppSpacing.xs.h),
-            TextField(
-              controller: _notesController,
-              maxLines: 2,
-              style: LightPOSTypography.bodyMedium,
-              decoration: InputDecoration(
-                hintText: 'Enter preparation instructions...',
-                hintStyle: LightPOSTypography.bodySmall,
-                fillColor: LightPOSColors.background,
-                filled: true,
-                contentPadding: EdgeInsets.symmetric(horizontal: AppSpacing.sm.w, vertical: AppSpacing.xs.h),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppSpacing.radiusMD.r),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-            Gap(AppSpacing.xs.h),
-            // Quick note tags
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _buildQuickNoteChip('Allergy Alert'),
-                  _buildQuickNoteChip('Spicy'),
-                  _buildQuickNoteChip('To Go'),
-                  _buildQuickNoteChip('Well Done'),
                 ],
               ),
             ),
-            Gap(AppSpacing.md.h),
 
-            // Financial Summary Card
-            FinancialSummaryCard(cartState: widget.cartState),
-            Gap(AppSpacing.md.h),
-
-            // Checkout CTA button
-            POSActionButton(
-              onPressed: () {
-                // Set notes before navigating
-                if (_notesController.text.isNotEmpty) {
-                  for (final item in widget.cartState.items) {
-                    ref.read(posCartProvider.notifier).updateNotes(item.menuItem.id, _notesController.text);
-                  }
-                }
-                context.go('/cart');
-              },
-              text: 'CHECKOUT',
-              icon: Icons.shopping_cart_checkout_outlined,
-              backgroundColor: LightPOSColors.primary,
-              foregroundColor: Colors.white,
-            ),
+            // ── Bottom Navigation ───────────────────────────────────────────
+            const RestroBottomNav(activePath: AppRoutes.menu),
           ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildModifiersRow(POSCartItem item) {
-    const listModifiers = ['No Garlic', 'Extra Spicy', 'To Go', 'Less Oil'];
-
-    return Wrap(
-      spacing: AppSpacing.xxs.w,
-      children: listModifiers.map((mod) {
-        final isSelected = item.selectedModifiers.contains(mod);
-        return ChoiceChip(
-          label: Text(mod, style: TextStyle(fontSize: 10.sp)),
-          selected: isSelected,
-          onSelected: (_) {
-            ref.read(posCartProvider.notifier).toggleModifier(item.menuItem.id, mod);
-          },
-          labelStyle: LightPOSTypography.labelSmall.copyWith(
-            color: isSelected ? LightPOSColors.primary : LightPOSColors.textSecondary,
-            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-          ),
-          selectedColor: LightPOSColors.primary.withValues(alpha: 0.15),
-          backgroundColor: LightPOSColors.background,
-          side: BorderSide(
-            color: isSelected ? LightPOSColors.primary : Colors.transparent,
-            width: 1,
-          ),
-          padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 0),
-          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildQuickNoteChip(String noteText) {
-    return Padding(
-      padding: EdgeInsets.only(right: 6.w),
-      child: ActionChip(
-        label: Text(noteText, style: TextStyle(fontSize: 10.sp)),
-        labelStyle: LightPOSTypography.labelSmall.copyWith(color: LightPOSColors.textSecondary),
-        backgroundColor: LightPOSColors.background,
-        onPressed: () {
-          if (_notesController.text.isEmpty) {
-            _notesController.text = noteText;
-          } else {
-            _notesController.text = '${_notesController.text}, $noteText';
-          }
-        },
-        padding: EdgeInsets.symmetric(horizontal: AppSpacing.xs.w, vertical: 0),
-        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppSpacing.radiusSM.r),
         ),
       ),
     );
   }
-}
 
-/// ─── Component: StatusIndicator ────────────────────────────────────────────
-class StatusIndicator extends StatelessWidget {
-  const StatusIndicator({super.key});
+  // ─── Dish Card ─────────────────────────────────────────────────────────────
 
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Pulsing Green dot decoration
-        Container(
-          width: 8.w,
-          height: 8.h,
-          decoration: const BoxDecoration(
-            color: LightPOSColors.success,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: LightPOSColors.success,
-                blurRadius: 4,
-                spreadRadius: 1,
+  Widget _buildDishCard(RestroMenuItem item, List<RestroCartLineItem> cartItems) {
+    final existingLine = cartItems.where((l) => l.item.id == item.id).firstOrNull;
+    final quantity = existingLine?.quantity ?? 0;
+
+    return Container(
+      padding: EdgeInsets.all(14.r),
+      decoration: BoxDecoration(
+        color: const Color(0xFF262626),
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(
+          color: quantity > 0 ? AppColors.primary : const Color(0xFF383838),
+          width: quantity > 0 ? 1.5 : 1.0,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                width: 38.r,
+                height: 38.r,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1F1F1F),
+                  borderRadius: BorderRadius.circular(10.r),
+                ),
+                child: Center(
+                  child: Text(item.emoji, style: TextStyle(fontSize: 20.sp)),
+                ),
+              ),
+              // Veg / Non-Veg Indicator
+              Container(
+                width: 16.r,
+                height: 16.r,
+                padding: EdgeInsets.all(3.r),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: item.isVeg ? const Color(0xFF22C55E) : const Color(0xFFEF4444),
+                    width: 1.5,
+                  ),
+                  borderRadius: BorderRadius.circular(4.r),
+                ),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: item.isVeg ? const Color(0xFF22C55E) : const Color(0xFFEF4444),
+                    shape: BoxShape.circle,
+                  ),
+                ),
               ),
             ],
           ),
-        ),
-        Gap(6.w),
-        Text('Cloud Synced', style: LightPOSTypography.bodySmall),
-      ],
-    );
-  }
-}
 
-/// ─── Component: FinancialSummaryCard ────────────────────────────────────────
-class FinancialSummaryCard extends StatelessWidget {
-  const FinancialSummaryCard({super.key, required this.cartState});
+          Gap(6.h),
 
-  final POSCartState cartState;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.all(AppSpacing.sm.r),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusLG.r),
-        border: Border.all(color: LightPOSColors.border),
-        boxShadow: LightPOSColors.softShadow,
-      ),
-      child: Column(
-        children: [
-          _buildSummaryLine('Subtotal', cartState.subtotalAmount.asCurrency),
-          Gap(AppSpacing.xxs.h),
-          _buildSummaryLine('Tax', cartState.taxAmount.asCurrency),
-          if (cartState.discountPercent > 0) ...[
-            Gap(AppSpacing.xxs.h),
-            _buildSummaryLine(
-              'Discount (${cartState.discountPercent.toStringAsFixed(0)}%)',
-              '-${cartState.discountAmount.asCurrency}',
-              isNegative: true,
+          Text(
+            item.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFFF5F5F5),
             ),
-          ],
-          Gap(AppSpacing.md.h),
-          Container(
-            padding: EdgeInsets.all(AppSpacing.sm.r),
-            decoration: BoxDecoration(
-              color: LightPOSColors.primary.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(AppSpacing.radiusMD.r),
-              border: Border.all(color: LightPOSColors.primary.withValues(alpha: 0.15)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Total Amount',
-                  style: LightPOSTypography.titleMedium.copyWith(
-                    fontWeight: FontWeight.w800,
+          ),
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '₹${item.price.toStringAsFixed(0)}',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.primary,
+                ),
+              ),
+              if (quantity == 0)
+                ElevatedButton(
+                  onPressed: () => ref.read(restroCartProvider.notifier).addItem(item),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1F1F1F),
+                    foregroundColor: AppColors.primary,
+                    side: const BorderSide(color: AppColors.primary),
+                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: Text(
+                    'Add',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                )
+              else
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1F1F1F),
+                    borderRadius: BorderRadius.circular(8.r),
+                    border: Border.all(color: AppColors.primary),
+                  ),
+                  child: Row(
+                    children: [
+                      InkWell(
+                        onTap: () => ref.read(restroCartProvider.notifier).decrement(item.id),
+                        child: const Padding(
+                          padding: EdgeInsets.all(4.0),
+                          child: Icon(Icons.remove, size: 14, color: AppColors.primary),
+                        ),
+                      ),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 8.w),
+                        child: Text(
+                          '$quantity',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 13.sp,
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFFF5F5F5),
+                          ),
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () => ref.read(restroCartProvider.notifier).increment(item.id),
+                        child: const Padding(
+                          padding: EdgeInsets.all(4.0),
+                          child: Icon(Icons.add, size: 14, color: AppColors.primary),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                Text(
-                  cartState.total.asCurrency,
-                  style: LightPOSTypography.headlineMedium.copyWith(
-                    color: LightPOSColors.primary,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ],
-            ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSummaryLine(String title, String value, {bool isNegative = false}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Expanded(
-          child: Text(
-            title,
-            style: LightPOSTypography.bodySmall,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+  // ─── Customer Info Header (CustomerInfo.jsx) ───────────────────────────────
+
+  Widget _buildCustomerInfoSection(CustomerDetails customer) {
+    return Container(
+      padding: EdgeInsets.all(12.r),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1F1F1F),
+        borderRadius: BorderRadius.circular(12.r),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 18.r,
+                backgroundColor: AppColors.primary,
+                child: Text(
+                  customer.name?.isNotEmpty == true ? customer.name![0].toUpperCase() : 'G',
+                  style: const TextStyle(color: Color(0xFF1F1F1F), fontWeight: FontWeight.bold),
+                ),
+              ),
+              Gap(10.w),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    customer.name?.isNotEmpty == true ? customer.name! : 'Guest Order',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFFF5F5F5),
+                    ),
+                  ),
+                  Text(
+                    'Table ${customer.tableNo ?? "Counter"} • ${customer.guests} Person',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 11.sp,
+                      color: const Color(0xFFABABAB),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ),
-        Gap(8.w),
-        Text(
-          value,
-          style: LightPOSTypography.bodyMedium.copyWith(
-            fontWeight: FontWeight.w600,
-            color: isNegative ? LightPOSColors.danger : LightPOSColors.textPrimary,
+          IconButton(
+            onPressed: () => context.go(AppRoutes.floor),
+            icon: const Icon(Icons.edit_outlined, color: AppColors.primary, size: 18),
+            tooltip: 'Change Table',
           ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ],
+        ],
+      ),
     );
   }
-}
 
-/// ─── Component: POSActionButton ─────────────────────────────────────────────
-class POSActionButton extends StatelessWidget {
-  const POSActionButton({
-    super.key,
-    required this.onPressed,
-    required this.text,
-    required this.icon,
-    this.backgroundColor = LightPOSColors.primary,
-    this.foregroundColor = Colors.white,
-    this.borderColor,
-  });
+  // ─── Cart Line Item Tile (CartInfo.jsx) ─────────────────────────────────────
 
-  final VoidCallback onPressed;
-  final String text;
-  final IconData icon;
-  final Color backgroundColor;
-  final Color foregroundColor;
-  final Color? borderColor;
-
-  @override
-  Widget build(BuildContext context) {
-    final isPrimary = backgroundColor == LightPOSColors.primary;
-
+  Widget _buildCartItemTile(RestroCartLineItem line) {
     return Container(
-      height: 52.h,
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14.r),
-        gradient: isPrimary
-            ? const LinearGradient(
-                colors: [LightPOSColors.primary, LightPOSColors.primaryLight],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              )
-            : null,
-        color: isPrimary ? null : backgroundColor,
-        border: borderColor != null ? Border.all(color: borderColor!, width: 1.5) : null,
-        boxShadow: isPrimary
-            ? [
-                BoxShadow(
-                  color: LightPOSColors.primary.withValues(alpha: 0.2),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                )
-              ]
-            : null,
+        color: const Color(0xFF1F1F1F),
+        borderRadius: BorderRadius.circular(10.r),
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onPressed,
-          borderRadius: BorderRadius.circular(14.r),
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm.w),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(icon, size: 18.sp, color: foregroundColor),
-                Gap(AppSpacing.xs.w),
-                Flexible(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      text,
-                      style: TextStyle(
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.w800,
-                        color: foregroundColor,
-                        letterSpacing: 0.5,
-                      ),
-                      maxLines: 1,
-                    ),
+                Text(
+                  line.item.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFFF5F5F5),
+                  ),
+                ),
+                Text(
+                  '₹${line.item.price.toStringAsFixed(0)} each',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 11.sp,
+                    color: const Color(0xFFABABAB),
                   ),
                 ),
               ],
             ),
           ),
-        ),
+          // Stepper
+          Row(
+            children: [
+              InkWell(
+                onTap: () => ref.read(restroCartProvider.notifier).decrement(line.item.id),
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF262626),
+                    borderRadius: BorderRadius.circular(6.r),
+                  ),
+                  child: const Icon(Icons.remove, size: 14, color: AppColors.primary),
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8.w),
+                child: Text(
+                  '${line.quantity}',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFFF5F5F5),
+                  ),
+                ),
+              ),
+              InkWell(
+                onTap: () => ref.read(restroCartProvider.notifier).increment(line.item.id),
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF262626),
+                    borderRadius: BorderRadius.circular(6.r),
+                  ),
+                  child: const Icon(Icons.add, size: 14, color: AppColors.primary),
+                ),
+              ),
+            ],
+          ),
+          Gap(12.w),
+          Text(
+            '₹${line.totalPrice.toStringAsFixed(0)}',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFFF5F5F5),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_outline, size: 16, color: Color(0xFFEF4444)),
+            onPressed: () => ref.read(restroCartProvider.notifier).removeItem(line.item.id),
+          ),
+        ],
       ),
+    );
+  }
+
+  // ─── Bill Summary Breakdown (Bill.jsx) ─────────────────────────────────────
+
+  Widget _buildBillSummary(double subtotal, double tax, double total) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Subtotal', style: TextStyle(color: const Color(0xFFABABAB), fontSize: 13.sp)),
+            Text('₹${subtotal.toStringAsFixed(2)}', style: TextStyle(color: const Color(0xFFF5F5F5), fontSize: 13.sp, fontWeight: FontWeight.w600)),
+          ],
+        ),
+        Gap(4.h),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Tax (CGST 2.5% + SGST 2.5%)', style: TextStyle(color: const Color(0xFFABABAB), fontSize: 12.sp)),
+            Text('₹${tax.toStringAsFixed(2)}', style: TextStyle(color: const Color(0xFFF5F5F5), fontSize: 12.sp)),
+          ],
+        ),
+        Gap(8.h),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Total Amount', style: TextStyle(color: const Color(0xFFF5F5F5), fontSize: 16.sp, fontWeight: FontWeight.w700)),
+            Text('₹${total.toStringAsFixed(2)}', style: TextStyle(color: AppColors.primary, fontSize: 18.sp, fontWeight: FontWeight.w800)),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // ─── Payment Method Selector ───────────────────────────────────────────────
+
+  Widget _buildPaymentMethodSelector(String selectedMethod) {
+    const methods = ['Cash', 'Online / Card', 'UPI'];
+
+    return Row(
+      children: methods.map((method) {
+        final isSelected = selectedMethod == method;
+        return Expanded(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 4.w),
+            child: InkWell(
+              onTap: () => ref.read(restroPaymentMethodProvider.notifier).state = method,
+              borderRadius: BorderRadius.circular(8.r),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                padding: EdgeInsets.symmetric(vertical: 8.h),
+                decoration: BoxDecoration(
+                  color: isSelected ? AppColors.primary : const Color(0xFF1F1F1F),
+                  borderRadius: BorderRadius.circular(8.r),
+                  border: Border.all(
+                    color: isSelected ? AppColors.primary : const Color(0xFF383838),
+                  ),
+                ),
+                child: Center(
+                  child: Text(
+                    method,
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 11.sp,
+                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                      color: isSelected ? const Color(0xFF1F1F1F) : const Color(0xFFABABAB),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 }

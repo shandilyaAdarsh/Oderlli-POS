@@ -26,15 +26,17 @@ void main() async {
   // Hide status / navigation bars for full-screen POS experience
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
-  // Initialize Supabase
-  try {
-    await Supabase.initialize(
-      url: AppConfig.supabaseUrl,
-      // ignore: deprecated_member_use
-      anonKey: AppConfig.supabaseAnonKey,
-    );
-  } catch (e, stack) {
-    debugPrint('[Main] Supabase initialization failed: $e\n$stack');
+  // Initialize Supabase only when not in mock fallback mode and not running on Web
+  if (!AppConfig.allowMockFallbackInDebug && !kIsWeb) {
+    try {
+      await Supabase.initialize(
+        url: AppConfig.supabaseUrl,
+        // ignore: deprecated_member_use
+        anonKey: AppConfig.supabaseAnonKey,
+      );
+    } catch (e, stack) {
+      debugPrint('[Main] Supabase initialization failed: $e\n$stack');
+    }
   }
 
   runApp(
@@ -62,10 +64,11 @@ class OrderlyyApp extends ConsumerWidget {
       builder: (context, child) {
         return InactivityScope(
           child: MaterialApp.router(
-            title: 'Orderlyy POS',
+            title: 'Restro POS',
             debugShowCheckedModeBanner: false,
-            theme: AppTheme.light,
-            themeMode: ThemeMode.light,
+            theme: AppTheme.dark,
+            darkTheme: AppTheme.dark,
+            themeMode: ThemeMode.dark,
             routerConfig: router,
             builder: (context, child) {
               final mediaQueryData = MediaQuery.of(context);

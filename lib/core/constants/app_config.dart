@@ -36,7 +36,7 @@ abstract final class AppConfig {
   static const String authUserKey = 'auth_user_json';
   static const String runtimeTokenKey = 'runtime_token';
 
-  static bool allowMockFallbackInDebug = false;
+  static bool allowMockFallbackInDebug = true;
 
   static const String printerIp = String.fromEnvironment('PRINTER_IP', defaultValue: '');
 

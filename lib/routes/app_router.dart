@@ -162,6 +162,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const FloorScreen(),
           ),
           GoRoute(
+            path: AppRoutes.tables,
+            name: 'tables',
+            builder: (context, state) => const FloorScreen(),
+          ),
+          GoRoute(
             path: AppRoutes.tableSelection,
             name: 'table-selection',
             builder: (context, state) => const TableSelectionScreen(),

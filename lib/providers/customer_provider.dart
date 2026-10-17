@@ -1,15 +1,37 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class CustomerDetails {
+  final String? orderId;
   final String? name;
   final String? phone;
+  final int guests;
+  final String? tableNo;
+  final String? tableId;
 
-  const CustomerDetails({this.name, this.phone});
+  const CustomerDetails({
+    this.orderId,
+    this.name,
+    this.phone,
+    this.guests = 1,
+    this.tableNo,
+    this.tableId,
+  });
 
-  CustomerDetails copyWith({String? name, String? phone}) {
+  CustomerDetails copyWith({
+    String? orderId,
+    String? name,
+    String? phone,
+    int? guests,
+    String? tableNo,
+    String? tableId,
+  }) {
     return CustomerDetails(
+      orderId: orderId ?? this.orderId,
       name: name ?? this.name,
       phone: phone ?? this.phone,
+      guests: guests ?? this.guests,
+      tableNo: tableNo ?? this.tableNo,
+      tableId: tableId ?? this.tableId,
     );
   }
 
@@ -19,8 +41,21 @@ class CustomerDetails {
 class CustomerDetailsNotifier extends StateNotifier<CustomerDetails> {
   CustomerDetailsNotifier() : super(const CustomerDetails());
 
+  void setCustomer({String? name, String? phone, int guests = 1}) {
+    state = CustomerDetails(
+      orderId: '${DateTime.now().millisecondsSinceEpoch}',
+      name: name,
+      phone: phone,
+      guests: guests,
+    );
+  }
+
+  void updateTable({String? tableId, String? tableNo}) {
+    state = state.copyWith(tableId: tableId, tableNo: tableNo);
+  }
+
   void setDetails({String? name, String? phone}) {
-    state = CustomerDetails(name: name, phone: phone);
+    state = state.copyWith(name: name, phone: phone);
   }
 
   void clear() {

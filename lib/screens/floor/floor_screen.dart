@@ -1,15 +1,16 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../theme/theme.dart';
-import '../../models/models.dart';
-import '../../providers/providers.dart';
-import '../../widgets/widgets.dart';
-import '../../core/extensions/extensions.dart';
-import '../../providers/inactivity_provider.dart';
+import '../../mock/restro_mock_data.dart';
+import '../../providers/customer_provider.dart';
+import '../../providers/restro_pos_provider.dart';
+import '../../routes/app_routes.dart';
+import '../../widgets/restro_header.dart';
+import '../../widgets/restro_bottom_nav.dart';
 
 class FloorScreen extends ConsumerStatefulWidget {
   const FloorScreen({super.key});
@@ -19,273 +20,460 @@ class FloorScreen extends ConsumerStatefulWidget {
 }
 
 class _FloorScreenState extends ConsumerState<FloorScreen> {
-  Timer? _refreshTimer;
+  String _statusFilter = 'all'; // 'all' | 'booked' | 'available'
 
-  void _startRefreshTimer(int seconds) {
-    _refreshTimer?.cancel();
-    _refreshTimer = Timer.periodic(Duration(seconds: seconds), (_) {
-      if (mounted) {
-        final repo = ref.read(tableRepositoryProvider);
-        if (repo.lastFetchFailedWith401) {
-          debugPrint('[FloorScreen] Skipping refresh poll cycle because the last attempt failed with 401.');
-          return;
-        }
-        ref.read(posTablesProvider.notifier).refreshTables();
-        ref.read(ordersProvider.notifier).fetchOrders();
-      }
-    });
+  // Colors list from utils.js in Restaurant_POS_System
+  static const List<Color> _avatarColors = [
+    Color(0xFFB73E3E),
+    Color(0xFF5B45B0),
+    Color(0xFF7F167F),
+    Color(0xFF735F32),
+    Color(0xFF1D2569),
+    Color(0xFF285430),
+    Color(0xFFB85D19),
+    Color(0xFF025CCA),
+  ];
+
+  Color _getAvatarColor(String initial) {
+    if (initial.isEmpty || initial == 'N/A') return const Color(0xFF1F1F1F);
+    final code = initial.codeUnitAt(0);
+    return _avatarColors[code % _avatarColors.length];
   }
 
-  @override
-  void initState() {
-    super.initState();
-    final initialSeconds = ref.read(posSettingsProvider).autoRefreshInterval;
-    _startRefreshTimer(initialSeconds);
+  void _handleTableClick(RestroTableItem table) {
+    if (table.isBooked) {
+      _showBookedTableModal(table);
+      return;
+    }
+
+    // Assign table to active customer and navigate to menu
+    ref.read(customerDetailsProvider.notifier).updateTable(
+          tableId: table.id,
+          tableNo: table.name,
+        );
+
+    context.go(AppRoutes.menu);
   }
 
-  @override
-  void dispose() {
-    _refreshTimer?.cancel();
-    super.dispose();
+  void _showBookedTableModal(RestroTableItem table) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: const Color(0xFF262626),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.r),
+          side: const BorderSide(color: Color(0xFF383838)),
+        ),
+        child: Container(
+          width: 420.w,
+          padding: EdgeInsets.all(24.r),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(8.r),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2E4A40),
+                          borderRadius: BorderRadius.circular(8.r),
+                        ),
+                        child: const Icon(Icons.table_bar, color: Color(0xFF22C55E), size: 20),
+                      ),
+                      Gap(12.w),
+                      Text(
+                        'Table → ${table.name}',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 18.sp,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFFF5F5F5),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2E4A40),
+                      borderRadius: BorderRadius.circular(6.r),
+                    ),
+                    child: Text(
+                      'Booked',
+                      style: TextStyle(
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF22C55E),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              Gap(20.h),
+              _buildDetailItem('Customer:', table.customerName ?? 'Walk-in Guest'),
+              if (table.customerPhone != null)
+                _buildDetailItem('Phone:', table.customerPhone!),
+              _buildDetailItem('Seats:', '${table.seats} Person'),
+              if (table.currentBillTotal != null)
+                _buildDetailItem('Current Bill:', '₹${table.currentBillTotal!.toStringAsFixed(2)}'),
+              Gap(24.h),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        ref.read(restroTablesProvider.notifier).freeTable(table.name);
+                        Navigator.of(ctx).pop();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Table ${table.name} has been vacated and cleaned.'),
+                            backgroundColor: const Color(0xFF262626),
+                          ),
+                        );
+                      },
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFF383838)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10.r),
+                        ),
+                        padding: EdgeInsets.symmetric(vertical: 12.h),
+                      ),
+                      child: Text(
+                        'Vacate / Settle',
+                        style: TextStyle(color: const Color(0xFFEF4444), fontSize: 13.sp),
+                      ),
+                    ),
+                  ),
+                  Gap(12.w),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        // Switch active customer to this table and open Menu
+                        ref.read(customerDetailsProvider.notifier).setCustomer(
+                              name: table.customerName ?? 'Table ${table.name}',
+                              phone: table.customerPhone,
+                              guests: table.seats,
+                            );
+                        ref.read(customerDetailsProvider.notifier).updateTable(
+                              tableId: table.id,
+                              tableNo: table.name,
+                            );
+                        Navigator.of(ctx).pop();
+                        context.go(AppRoutes.menu);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: const Color(0xFF1F1F1F),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10.r),
+                        ),
+                        padding: EdgeInsets.symmetric(vertical: 12.h),
+                        elevation: 0,
+                      ),
+                      child: Text(
+                        'Add Items',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
+  Widget _buildDetailItem(String label, String value) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 8.h),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(color: Color(0xFFABABAB), fontSize: 13)),
+          Text(
+            value,
+            style: const TextStyle(color: Color(0xFFF5F5F5), fontWeight: FontWeight.w600, fontSize: 13),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    ref.listen<int>(
-      posSettingsProvider.select((s) => s.autoRefreshInterval),
-      (previous, next) {
-        if (next != previous) {
-          _startRefreshTimer(next);
-        }
-      },
-    );
+    final tables = ref.watch(restroTablesProvider);
+    final searchQuery = ref.watch(restroGlobalSearchProvider).toLowerCase();
 
-    final tables = ref.watch(liveTableStatusProvider);
-    // Filter by selected section (mirrors posFilteredTablesProvider logic but on enriched tables)
-    final selectedSection = ref.watch(posSelectedSectionProvider);
-    final counterTable = ref.watch(counterTableProvider);
-    final filteredTables = selectedSection == null
-        ? tables.where((t) => t.id != counterTable?.id).toList()
-        : tables.where((t) => t.sectionName == selectedSection && t.id != counterTable?.id).toList();
-
-    // sections is watched to allow posTableSectionsProvider to rebuild on change
-    ref.watch(posTableSectionsProvider);
-    // Calculate operational summary stats dynamically
-    final allTables = tables; // liveTableStatusProvider already returns all tables enriched
-    final occupiedCount = allTables.where((t) => t.status == POSTableStatus.occupied).length;
-    final preparingCount = allTables.where((t) => t.status == POSTableStatus.preparing).length;
-    final readyCount = allTables.where((t) => t.status == POSTableStatus.ready).length;
-    final activeOrdersCount = occupiedCount + preparingCount + readyCount;
-
-    final paymentPendingCount = allTables.where((t) => t.status == POSTableStatus.paymentPending).length;
+    final filteredTables = tables.where((table) {
+      if (_statusFilter == 'booked' && !table.isBooked) return false;
+      if (_statusFilter == 'available' && table.isBooked) return false;
+      if (searchQuery.isNotEmpty && !table.name.toLowerCase().contains(searchQuery)) return false;
+      return true;
+    }).toList();
 
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Column(
-        children: [
-          // ── 1. Top Bar & Section Filter ────────────────────────────────────
-          Container(
-            height: 72.h,
-            padding: EdgeInsets.symmetric(horizontal: 16.w),
-            decoration: const BoxDecoration(
-              color: AppColors.surface,
-              border: Border(bottom: BorderSide(color: AppColors.border)),
+      backgroundColor: const Color(0xFF1F1F1F),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // ── Top Header ──────────────────────────────────────────────────
+            const RestroHeader(),
+
+            // ── Action Bar: Back button, Title & Status Filters ──────────────
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 14.h),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      InkWell(
+                        onTap: () => context.go(AppRoutes.dashboard),
+                        borderRadius: BorderRadius.circular(10.r),
+                        child: Container(
+                          padding: EdgeInsets.all(8.r),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF262626),
+                            borderRadius: BorderRadius.circular(10.r),
+                          ),
+                          child: const Icon(
+                            Icons.arrow_back_ios_new,
+                            color: Color(0xFFF5F5F5),
+                            size: 18,
+                          ),
+                        ),
+                      ),
+                      Gap(16.w),
+                      Text(
+                        'Tables',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 22.sp,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFFF5F5F5),
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  // Filter Buttons
+                  Row(
+                    children: [
+                      _buildFilterChip(label: 'All', value: 'all'),
+                      Gap(10.w),
+                      _buildFilterChip(label: 'Booked', value: 'booked'),
+                      Gap(10.w),
+                      _buildFilterChip(label: 'Available', value: 'available'),
+                    ],
+                  ),
+                ],
+              ),
             ),
-            child: Row(
-              children: [
-                Text('Floor Overview', style: AppTextStyles.headlineMedium),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.refresh, color: AppColors.textSecondary),
-                  tooltip: 'Refresh Floor Plan',
-                  onPressed: () {
-                    ref.read(posTablesProvider.notifier).refreshTables();
-                    ref.read(inactivityServiceProvider).resetTimer();
+
+            // ── Tables Grid (TableCard.jsx in grid-cols-5) ───────────────────
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 24.w),
+                child: GridView.builder(
+                  padding: EdgeInsets.only(bottom: 24.h),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 5,
+                    crossAxisSpacing: 16.w,
+                    mainAxisSpacing: 16.h,
+                    childAspectRatio: 1.25,
+                  ),
+                  itemCount: filteredTables.length,
+                  itemBuilder: (context, i) {
+                    final table = filteredTables[i];
+                    return _buildTableCard(table);
                   },
                 ),
-                Gap(16.w),
-                const StatusChip(label: 'LIVE FLOORS', color: AppColors.success),
-              ],
+              ),
             ),
-          ),
 
-          // ── 2. Top Operational Summary Bar ─────────────────────────────────
-          Container(
-            decoration: const BoxDecoration(
-              color: AppColors.sidebarBg,
-              border: Border(bottom: BorderSide(color: AppColors.border)),
-            ),
-            padding: EdgeInsets.symmetric(
-              horizontal: context.isVerticalLayout ? 12.w : 16.w,
-              vertical: 12.h,
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _SummaryIndicator(
-                    label: 'Occupied Tables',
-                    value: '$occupiedCount',
-                    icon: Icons.table_bar,
-                    color: AppColors.primary,
-                  ),
-                ),
-                Gap(context.isVerticalLayout ? 8.w : 16.w),
-                Expanded(
-                  child: _SummaryIndicator(
-                    label: 'Payment Pending',
-                    value: '$paymentPendingCount',
-                    icon: Icons.pending_actions,
-                    color: AppColors.cash,
-                  ),
-                ),
-                Gap(context.isVerticalLayout ? 8.w : 16.w),
-                Expanded(
-                  child: _SummaryIndicator(
-                    label: 'Active Kitchen Orders',
-                    value: '$activeOrdersCount',
-                    icon: Icons.restaurant,
-                    color: AppColors.statusPreparing,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-
-          Expanded(
-            child: _buildGrid(filteredTables),
-          ),
-        ],
+            // ── Bottom Navigation ───────────────────────────────────────────
+            const RestroBottomNav(activePath: AppRoutes.floor),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildGrid(List<TableModel> tables) {
-    final allTablesAsync = ref.watch(posTablesProvider);
-
-    if (allTablesAsync.isLoading && (allTablesAsync.valueOrNull ?? []).isEmpty) {
-      return const Center(
-        child: CircularProgressIndicator(
-          color: AppColors.primary,
+  Widget _buildFilterChip({required String label, required String value}) {
+    final isSelected = _statusFilter == value;
+    return InkWell(
+      onTap: () => setState(() => _statusFilter = value),
+      borderRadius: BorderRadius.circular(10.r),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 8.h),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF383838) : Colors.transparent,
+          borderRadius: BorderRadius.circular(10.r),
         ),
-      );
-    }
-
-    if (allTablesAsync.hasError) {
-      return Center(
-        child: Padding(
-          padding: EdgeInsets.all(24.r),
-          child: EmptyStateWidget(
-            icon: Icons.wifi_off_outlined,
-            title: 'Connection Error',
-            description: 'Failed to fetch tables from the server. Please check your connection.\n${allTablesAsync.error}',
+        child: Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 14.sp,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            color: isSelected ? const Color(0xFFF5F5F5) : const Color(0xFFABABAB),
           ),
         ),
-      );
-    }
-
-    if (tables.isEmpty) {
-      return const Center(
-        child: EmptyStateWidget(
-          icon: Icons.table_restaurant_outlined,
-          title: 'No Tables Configured',
-          description: 'No tables found for this branch in the selected section.',
-        ),
-      );
-    }
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        final crossAxisCount = width > 1600
-            ? 5
-            : (width > 1200
-                ? 4
-                : (width > 900
-                    ? 3
-                    : 2));
-        final childAspectRatio = context.isVerticalLayout
-            ? (width > 600 ? 1.42 : 1.50)
-            : (width > 1200 ? 1.32 : 1.38);
-
-        return GridView.builder(
-          padding: EdgeInsets.all(16.r),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
-            crossAxisSpacing: 12.w,
-            mainAxisSpacing: 12.h,
-            childAspectRatio: childAspectRatio,
-          ),
-          itemCount: tables.length,
-          itemBuilder: (context, i) {
-            final table = tables[i];
-            return POSTableCard(
-              table: table,
-              isSelected: false,
-              onTap: () {},
-            );
-          },
-        );
-      },
+      ),
     );
   }
 
+  // ─── Table Card (TableCard.jsx) ────────────────────────────────────────────
 
-}
+  Widget _buildTableCard(RestroTableItem table) {
+    final isBooked = table.isBooked;
+    final avatarColor = _getAvatarColor(table.initial);
 
-
-class _SummaryIndicator extends StatelessWidget {
-  const _SummaryIndicator({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.color,
-  });
-
-  final String label;
-  final String value;
-  final IconData icon;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusMD.r),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor: color.withValues(alpha: 0.12),
-            radius: 18.r,
-            child: Icon(icon, color: color, size: 18.sp),
+    return InkWell(
+      onTap: () => _handleTableClick(table),
+      borderRadius: BorderRadius.circular(14.r),
+      child: Container(
+        padding: EdgeInsets.all(16.r),
+        decoration: BoxDecoration(
+          color: const Color(0xFF262626),
+          borderRadius: BorderRadius.circular(14.r),
+          border: Border.all(
+            color: isBooked ? const Color(0xFF2E4A40) : const Color(0xFF383838),
+            width: 1,
           ),
-          Gap(12.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Header: Table -> N and Status Badge
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  value,
-                  style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.w800),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                Row(
+                  children: [
+                    Text(
+                      'Table',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 15.sp,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFFF5F5F5),
+                      ),
+                    ),
+                    Gap(4.w),
+                    const Icon(
+                      Icons.arrow_forward_rounded,
+                      size: 14,
+                      color: Color(0xFFABABAB),
+                    ),
+                    Gap(4.w),
+                    Text(
+                      table.name,
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFFF5F5F5),
+                      ),
+                    ),
+                  ],
                 ),
-                Text(
-                  label,
-                  style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                  decoration: BoxDecoration(
+                    color: isBooked ? const Color(0xFF2E4A40) : const Color(0xFF664A04),
+                    borderRadius: BorderRadius.circular(6.r),
+                  ),
+                  child: Text(
+                    table.status,
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 11.sp,
+                      fontWeight: FontWeight.w700,
+                      color: isBooked ? const Color(0xFF22C55E) : const Color(0xFFF5F5F5),
+                    ),
+                  ),
                 ),
               ],
             ),
-          ),
-        ],
+
+            // Center Initials Avatar Circle
+            Center(
+              child: Container(
+                width: 60.r,
+                height: 60.r,
+                decoration: BoxDecoration(
+                  color: avatarColor,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    if (isBooked)
+                      BoxShadow(
+                        color: avatarColor.withValues(alpha: 0.35),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                  ],
+                ),
+                child: Center(
+                  child: Text(
+                    table.initial.isNotEmpty ? table.initial : 'N/A',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 18.sp,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // Footer: Seats Count
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                RichText(
+                  text: TextSpan(
+                    text: 'Seats: ',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 12.sp,
+                      color: const Color(0xFFABABAB),
+                    ),
+                    children: [
+                      TextSpan(
+                        text: '${table.seats}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFFF5F5F5),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (isBooked && table.currentBillTotal != null)
+                  Text(
+                    '₹${table.currentBillTotal!.toStringAsFixed(0)}',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

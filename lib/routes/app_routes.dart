@@ -9,6 +9,7 @@ abstract final class AppRoutes {
   // Top-level Dashboard / Side navigation routes
   static const String dashboard = '/dashboard';
   static const String floor = '/floor';
+  static const String tables = '/tables';
   static const String orders = '/orders';
   static const String kitchen = '/kitchen';
   static const String shifts = '/shifts';

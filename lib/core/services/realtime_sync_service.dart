@@ -28,6 +28,11 @@ class RealtimeSyncService with WidgetsBindingObserver {
     // Unsubscribe from any existing subscription first to prevent duplicates
     _unsubscribe();
 
+    if (kIsWeb || AppConfig.allowMockFallbackInDebug) {
+      debugPrint('[RealtimeSyncService] Mock or web mode active. Realtime sync skipped.');
+      return;
+    }
+
     debugPrint('[RealtimeSyncService] Subscribing to realtime for branch: $branchId');
     try {
       _channel = Supabase.instance.client
