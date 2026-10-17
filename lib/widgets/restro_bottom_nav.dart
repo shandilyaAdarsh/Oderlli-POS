@@ -50,38 +50,46 @@ class _RestroBottomNavState extends ConsumerState<RestroBottomNav> {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               // ── Home Tab ───────────────────────────────────────────────────
-              _buildNavButton(
-                icon: Icons.home_rounded,
-                label: 'Home',
-                isActive: isHome,
-                onTap: () => context.go(AppRoutes.dashboard),
+              Expanded(
+                child: _buildNavButton(
+                  icon: Icons.home_rounded,
+                  label: 'Home',
+                  isActive: isHome,
+                  onTap: () => context.go(AppRoutes.dashboard),
+                ),
               ),
 
               // ── Orders Tab ─────────────────────────────────────────────────
-              _buildNavButton(
-                icon: Icons.receipt_long_rounded,
-                label: 'Orders',
-                isActive: isOrders,
-                onTap: () => context.go(AppRoutes.orders),
+              Expanded(
+                child: _buildNavButton(
+                  icon: Icons.receipt_long_rounded,
+                  label: 'Orders',
+                  isActive: isOrders,
+                  onTap: () => context.go(AppRoutes.orders),
+                ),
               ),
 
               // Spacer for the center floating button
               Gap(80.w),
 
               // ── Tables Tab ─────────────────────────────────────────────────
-              _buildNavButton(
-                icon: Icons.table_bar_rounded,
-                label: 'Tables',
-                isActive: isTables,
-                onTap: () => context.go(AppRoutes.floor),
+              Expanded(
+                child: _buildNavButton(
+                  icon: Icons.table_bar_rounded,
+                  label: 'Tables',
+                  isActive: isTables,
+                  onTap: () => context.go(AppRoutes.floor),
+                ),
               ),
 
               // ── Menu / More Tab ───────────────────────────────────────────
-              _buildNavButton(
-                icon: Icons.restaurant_menu_rounded,
-                label: 'Menu',
-                isActive: isMenu,
-                onTap: () => context.go(AppRoutes.menu),
+              Expanded(
+                child: _buildNavButton(
+                  icon: Icons.restaurant_menu_rounded,
+                  label: 'Menu',
+                  isActive: isMenu,
+                  onTap: () => context.go(AppRoutes.menu),
+                ),
               ),
             ],
           ),
@@ -135,28 +143,34 @@ class _RestroBottomNavState extends ConsumerState<RestroBottomNav> {
       borderRadius: BorderRadius.circular(20.r),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        width: 180.w,
         height: 48.h,
+        margin: EdgeInsets.symmetric(horizontal: 4.w),
+        padding: EdgeInsets.symmetric(horizontal: 8.w),
         decoration: BoxDecoration(
           color: isActive ? const Color(0xFF343434) : Colors.transparent,
           borderRadius: BorderRadius.circular(20.r),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               icon,
               color: isActive ? const Color(0xFFF5F5F5) : const Color(0xFFABABAB),
               size: 20,
             ),
-            Gap(10.w),
-            Text(
-              label,
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 14.sp,
-                fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                color: isActive ? const Color(0xFFF5F5F5) : const Color(0xFFABABAB),
+            Gap(8.w),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 14.sp,
+                  fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                  color: isActive ? const Color(0xFFF5F5F5) : const Color(0xFFABABAB),
+                ),
               ),
             ),
           ],
