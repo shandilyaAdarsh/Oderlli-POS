@@ -55,6 +55,26 @@ void main() async {
         options.replay.onErrorSampleRate = 1.0;
         options.enableLogs = true;
         options.environment = kReleaseMode ? 'production' : 'development';
+        options.beforeSend = (event, hint) {
+          // Filter out synthetic verification test exceptions to eliminate test noise in Sentry
+          final throwable = event.throwable;
+          if (throwable is StateError &&
+              (throwable.message.contains('Sentry verification test event') ||
+               throwable.message.contains('This is test exception'))) {
+            return null;
+          }
+          final msg = event.message?.formatted ?? '';
+          if (msg.contains('Sentry verification test event') || msg.contains('This is test exception')) {
+            return null;
+          }
+          for (final exception in event.exceptions ?? <SentryException>[]) {
+            final val = exception.value ?? '';
+            if (val.contains('Sentry verification test event') || val.contains('This is test exception')) {
+              return null;
+            }
+          }
+          return event;
+        };
       },
       appRunner: () async {
         await _initializeApp();
