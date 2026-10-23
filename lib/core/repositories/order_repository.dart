@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../../models/models.dart';
+import '../../mock/restro_mock_data.dart';
 import '../constants/app_config.dart';
 import '../services/order_service.dart';
 import '../services/cart_service.dart';
@@ -274,6 +275,27 @@ class OrderRepository {
   }
 
   List<OrderSummary> _getMockOrderSummaries(String? status) {
+    if (_mockOrders.isEmpty) {
+      for (final o in RestroMockData.initialOrders) {
+        _mockOrders.add(Order(
+          id: 'ord-${o.id}',
+          tableId: 't-${o.tableNo}',
+          tableNumber: int.tryParse(o.tableNo) ?? 1,
+          items: const [],
+          createdAt: o.dateTime,
+          status: o.status.toLowerCase() == 'ready'
+              ? OrderStatus.ready
+              : (o.status.toLowerCase() == 'in progress'
+                  ? OrderStatus.preparing
+                  : OrderStatus.pending),
+          notes: 'Customer: ${o.customer}',
+          subtotalMinor: (o.total * 95).toInt(),
+          taxTotalMinor: (o.total * 5).toInt(),
+          discountTotalMinor: 0,
+          grandTotalMinor: (o.total * 100).toInt(),
+        ));
+      }
+    }
     return _mockOrders.where((o) {
       if (status == null) return true;
       return serializeOrderStatus(o.status) == status;

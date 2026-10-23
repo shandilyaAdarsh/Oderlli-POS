@@ -268,6 +268,97 @@ class DioClient {
                 },
               ));
             }
+            if (options.path.contains('/orders/checkout')) {
+              return handler.resolve(Response(
+                requestOptions: options,
+                statusCode: 200,
+                data: {
+                  'success': true,
+                  'data': {
+                    'order': {
+                      'id': 'ord-${DateTime.now().millisecondsSinceEpoch}',
+                      'tenant_id': 'tenant-demo-restro',
+                      'branch_id': 'branch-restro-main',
+                      'table_id': 't-1',
+                      'table_number': 1,
+                      'status': 'pending',
+                      'created_at': DateTime.now().toIso8601String(),
+                      'subtotal_minor': 1500,
+                      'tax_total_minor': 75,
+                      'discount_total_minor': 0,
+                      'grand_total_minor': 1575,
+                      'items': [],
+                    },
+                  },
+                },
+              ));
+            }
+            if (options.path.contains('/orders') && options.method == 'GET') {
+              final mockOrdersData = RestroMockData.initialOrders.map((o) => {
+                'id': 'ord-${o.id}',
+                'order_number': 'ORD-${o.id.substring(o.id.length.clamp(0, 4))}',
+                'status': o.status.toLowerCase() == 'ready'
+                    ? 'ready'
+                    : (o.status.toLowerCase() == 'in progress'
+                        ? 'preparing'
+                        : 'pending'),
+                'created_at': o.dateTime.toIso8601String(),
+                'table_id': 't-${o.tableNo}',
+                'order_notes': 'Customer: ${o.customer}',
+                'grand_total_minor': (o.total * 100).toInt(),
+                'customer_payment_intent': null,
+                'items': o.itemNames.map((name) => {'name': name, 'qty': 1}).toList(),
+              }).toList();
+              return handler.resolve(Response(
+                requestOptions: options,
+                statusCode: 200,
+                data: {
+                  'success': true,
+                  'data': {
+                    'orders': mockOrdersData,
+                  },
+                },
+              ));
+            }
+            if (options.path.contains('/billing/')) {
+              return handler.resolve(Response(
+                requestOptions: options,
+                statusCode: 200,
+                data: {
+                  'success': true,
+                  'status': 'success',
+                  'data': {
+                    'projections': [],
+                    'bill': {
+                      'id': 'bill-demo-1',
+                      'totalMinor': 1575,
+                      'status': 'UNPAID',
+                    },
+                    'updatedBill': {
+                      'id': 'bill-demo-1',
+                      'status': 'PAID',
+                    },
+                  },
+                },
+              ));
+            }
+            if (options.path.contains('/cart')) {
+              return handler.resolve(Response(
+                requestOptions: options,
+                statusCode: 200,
+                data: {
+                  'success': true,
+                  'data': {
+                    'cart': {
+                      'id': 'cart-demo-1',
+                      'items': [],
+                      'revision': 1,
+                    },
+                    'sessionId': 'session-demo-1',
+                  },
+                },
+              ));
+            }
           }
 
           // Inject Fingerprint header

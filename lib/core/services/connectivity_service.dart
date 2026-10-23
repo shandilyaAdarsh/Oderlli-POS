@@ -1,5 +1,7 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
+import '../constants/app_config.dart';
 
 class ConnectivityService {
   final Connectivity _connectivity = Connectivity();
@@ -7,6 +9,9 @@ class ConnectivityService {
 
   /// Checks if network connection exists and if the backend base URL is reachable.
   Future<bool> isBackendReachable(String baseUrl, String healthEndpoint) async {
+    if (kIsWeb || AppConfig.allowMockFallbackInDebug) {
+      return false;
+    }
     try {
       final connectivityResult = await _connectivity.checkConnectivity();
       if (connectivityResult.contains(ConnectivityResult.none)) {
