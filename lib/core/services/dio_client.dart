@@ -172,7 +172,7 @@ class DioClient {
                 'tenant_id': 'tenant-demo-restro',
                 'branch_id': 'branch-restro-main',
                 'table_number': t.name,
-                'display_name': 'Table ${t.name}',
+                'display_name': t.name,
                 'capacity': t.seats,
                 'floor_id': 'floor-1',
                 'section_id': 'sec-main',

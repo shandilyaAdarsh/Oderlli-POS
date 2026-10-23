@@ -426,12 +426,15 @@ class _FloorScreenState extends ConsumerState<FloorScreen> {
     final isOccupied = table.status != POSTableStatus.available;
     final initials = _initials(table.assignedWaiterName);
     final avatarColor = _getAvatarColor(table.assignedWaiterName ?? table.tableName);
+    final cleanTableNumber = table.tableName.toLowerCase().startsWith('table')
+        ? table.tableName.replaceFirst(RegExp(r'^table\s*', caseSensitive: false), '').trim()
+        : table.tableName.trim();
 
     return InkWell(
       onTap: () => _handleTableTap(table),
       borderRadius: BorderRadius.circular(14.r),
       child: Container(
-        padding: EdgeInsets.all(16.r),
+        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 14.h),
         decoration: BoxDecoration(
           color: const Color(0xFF262626),
           borderRadius: BorderRadius.circular(14.r),
@@ -448,33 +451,41 @@ class _FloorScreenState extends ConsumerState<FloorScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Text(
-                      'Table',
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFFF5F5F5),
+                Expanded(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Table',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFFF5F5F5),
+                        ),
                       ),
-                    ),
-                    Gap(4.w),
-                    const Icon(Icons.arrow_forward_rounded, size: 12, color: Color(0xFFABABAB)),
-                    Gap(4.w),
-                    Text(
-                      table.tableName,
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 15.sp,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFFF5F5F5),
+                      Gap(4.w),
+                      const Icon(Icons.arrow_forward_rounded, size: 12, color: Color(0xFFABABAB)),
+                      Gap(4.w),
+                      Flexible(
+                        child: Text(
+                          cleanTableNumber,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 15.sp,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFFF5F5F5),
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
+                Gap(4.w),
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                  padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 3.h),
                   decoration: BoxDecoration(
                     color: _statusBgColor(table.status),
                     borderRadius: BorderRadius.circular(5.r),
