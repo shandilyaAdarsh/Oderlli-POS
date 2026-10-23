@@ -7,6 +7,15 @@ class ConnectivityService {
 
   /// Checks if network connection exists and if the backend base URL is reachable.
   Future<bool> isBackendReachable(String baseUrl, String healthEndpoint) async {
-    return false;
+    try {
+      final connectivityResult = await _connectivity.checkConnectivity();
+      if (connectivityResult.contains(ConnectivityResult.none)) {
+        return false;
+      }
+      final response = await _pingDio.get('$baseUrl$healthEndpoint');
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
   }
 }

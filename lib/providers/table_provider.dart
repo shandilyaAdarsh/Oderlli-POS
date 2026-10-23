@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/models.dart';
 import '../core/services/table_service.dart';
 import '../core/repositories/table_repository.dart';
+import '../core/constants/app_config.dart';
 import '../screens/login/employee_login_screen.dart';
 import 'auth_provider.dart';
 import 'orders_provider.dart';
@@ -59,6 +60,9 @@ class POSTablesNotifier extends AsyncNotifier<List<TableModel>> {
     final branchId = ids.branchId;
 
     if (branchId == null) {
+      if (AppConfig.allowMockFallbackInDebug) {
+        return TableRepository.getMockTables();
+      }
       throw Exception('No branchId context configured. Please verify your login session.');
     }
 
@@ -68,6 +72,9 @@ class POSTablesNotifier extends AsyncNotifier<List<TableModel>> {
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[posTablesProvider] fetchTables failed: $e');
+      }
+      if (AppConfig.allowMockFallbackInDebug) {
+        return TableRepository.getMockTables();
       }
       rethrow;
     }
@@ -100,11 +107,43 @@ class POSTablesNotifier extends AsyncNotifier<List<TableModel>> {
       // 2. Call backend vacate
       await ref.read(tableRepositoryProvider).vacateTable(tableId);
 
-      // 3. (Optional) Re-fetch verified state from backend or wait for SSE
-      await refreshTables();
+      // 3. Update state
+      if (AppConfig.allowMockFallbackInDebug && state.valueOrNull != null) {
+        state = AsyncData([
+          for (final t in state.value!)
+            if (t.id == tableId)
+              t.copyWith(
+                status: POSTableStatus.available,
+                guestCount: 0,
+                assignedWaiterName: null,
+                occupiedSince: null,
+                billTotal: 0.0,
+              )
+            else
+              t,
+        ]);
+      } else {
+        await refreshTables();
+      }
     } catch (e) {
-      await refreshTables();
-      rethrow;
+      if (AppConfig.allowMockFallbackInDebug && state.valueOrNull != null) {
+        state = AsyncData([
+          for (final t in state.value!)
+            if (t.id == tableId)
+              t.copyWith(
+                status: POSTableStatus.available,
+                guestCount: 0,
+                assignedWaiterName: null,
+                occupiedSince: null,
+                billTotal: 0.0,
+              )
+            else
+              t,
+        ]);
+      } else {
+        await refreshTables();
+        rethrow;
+      }
     }
   }
 }

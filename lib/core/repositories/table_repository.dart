@@ -5,6 +5,9 @@ import '../../models/models.dart';
 import '../../providers/auth_provider.dart';
 import '../services/table_service.dart';
 
+import '../constants/app_config.dart';
+import '../../mock/restro_mock_data.dart';
+
 class TableRepository {
   final TableService _tableService;
 
@@ -21,6 +24,24 @@ class TableRepository {
   TableRepository(this._tableService);
 
   bool get lastFetchFailedWith401 => _lastFetchFailedWith401;
+
+  static List<TableModel> getMockTables() {
+    return RestroMockData.initialTables.map((t) {
+      final isBooked = t.status == 'Booked';
+      return TableModel(
+        id: t.id,
+        tableName: t.name,
+        capacity: t.seats,
+        status: isBooked ? POSTableStatus.occupied : POSTableStatus.available,
+        guestCount: isBooked ? t.seats : 0,
+        assignedWaiterName: t.customerName,
+        occupiedSince: isBooked ? DateTime.now().subtract(const Duration(minutes: 35)) : null,
+        billTotal: t.currentBillTotal ?? 0.0,
+        sectionName: 'Main Dining',
+        floorName: 'Ground Floor',
+      );
+    }).toList();
+  }
 
   static void resetCircuitBreaker({bool force = false, Ref? ref}) {
     if (!force && ref != null) {
@@ -46,6 +67,24 @@ class TableRepository {
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[TableRepository] fetchFloors failed: $e');
+      }
+      if (AppConfig.allowMockFallbackInDebug) {
+        return const [
+          TableFloor(
+            id: 'floor-1',
+            tenantId: 'mock-tenant',
+            branchId: 'mock-branch',
+            name: 'Ground Floor',
+            sortOrder: 1,
+          ),
+          TableFloor(
+            id: 'floor-2',
+            tenantId: 'mock-tenant',
+            branchId: 'mock-branch',
+            name: 'First Floor',
+            sortOrder: 2,
+          ),
+        ];
       }
       rethrow;
     }
@@ -85,6 +124,31 @@ class TableRepository {
       }
       if (kDebugMode) {
         debugPrint('[TableRepository] fetchSections failed: $e');
+      }
+      if (AppConfig.allowMockFallbackInDebug) {
+        return const [
+          TableSection(
+            id: 'sec-main',
+            tenantId: 'mock-tenant',
+            branchId: 'mock-branch',
+            name: 'Main Dining',
+            sortOrder: 1,
+          ),
+          TableSection(
+            id: 'sec-outdoor',
+            tenantId: 'mock-tenant',
+            branchId: 'mock-branch',
+            name: 'Outdoor Patio',
+            sortOrder: 2,
+          ),
+          TableSection(
+            id: 'sec-vip',
+            tenantId: 'mock-tenant',
+            branchId: 'mock-branch',
+            name: 'VIP Lounge',
+            sortOrder: 3,
+          ),
+        ];
       }
       rethrow;
     }
@@ -138,6 +202,9 @@ class TableRepository {
       if (kDebugMode) {
         debugPrint('[TableRepository] fetchTables failed: $e');
       }
+      if (AppConfig.allowMockFallbackInDebug) {
+        return getMockTables();
+      }
       rethrow;
     }
   }
@@ -162,6 +229,9 @@ class TableRepository {
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[TableRepository] vacateTable failed: $e');
+      }
+      if (AppConfig.allowMockFallbackInDebug) {
+        return;
       }
       rethrow;
     }

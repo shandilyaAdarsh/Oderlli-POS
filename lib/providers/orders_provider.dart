@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../core/constants/app_config.dart';
 import '../models/models.dart';
 import 'customer_provider.dart';
 import '../core/repositories/order_repository.dart';
@@ -38,6 +39,9 @@ class OrdersNotifier extends AsyncNotifier<List<Order>> {
     final sessionIds = ref.read(cartSessionIdsProvider);
     final branchId = sessionIds.branchId;
     if (branchId == null) {
+      if (AppConfig.allowMockFallbackInDebug) {
+        return [];
+      }
       throw Exception('No branchId context configured. Please verify your login session.');
     }
 

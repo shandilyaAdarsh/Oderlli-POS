@@ -4,7 +4,6 @@ import 'package:gap/gap.dart';
 import 'package:intl/intl.dart';
 
 import '../theme/theme.dart';
-import '../mock/restro_mock_data.dart';
 import '../providers/restro_pos_provider.dart';
 
 class RestroInvoiceDialog extends StatelessWidget {

@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../mock/restro_mock_data.dart';
-import 'customer_provider.dart';
 
 // ─── Tables State ────────────────────────────────────────────────────────────
 
