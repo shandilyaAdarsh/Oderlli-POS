@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/auth_provider.dart';
+import '../../mock/restro_mock_data.dart';
 import '../constants/app_config.dart';
 import 'device_fingerprint_service.dart';
 import 'secure_storage_service.dart';
@@ -105,6 +106,165 @@ class DioClient {
                       'email': 'admin@restropos.com',
                     }
                   ]
+                },
+              ));
+            }
+            if (options.path.contains('/admin/tables/floors')) {
+              return handler.resolve(Response(
+                requestOptions: options,
+                statusCode: 200,
+                data: {
+                  'success': true,
+                  'data': [
+                    {
+                      'id': 'floor-1',
+                      'tenant_id': 'tenant-demo-restro',
+                      'branch_id': 'branch-restro-main',
+                      'name': 'Ground Floor',
+                      'sort_order': 1,
+                    },
+                    {
+                      'id': 'floor-2',
+                      'tenant_id': 'tenant-demo-restro',
+                      'branch_id': 'branch-restro-main',
+                      'name': 'First Floor',
+                      'sort_order': 2,
+                    },
+                  ],
+                },
+              ));
+            }
+            if (options.path.contains('/admin/tables/sections')) {
+              return handler.resolve(Response(
+                requestOptions: options,
+                statusCode: 200,
+                data: {
+                  'success': true,
+                  'data': [
+                    {
+                      'id': 'sec-main',
+                      'tenant_id': 'tenant-demo-restro',
+                      'branch_id': 'branch-restro-main',
+                      'name': 'Main Dining',
+                      'sort_order': 1,
+                    },
+                    {
+                      'id': 'sec-outdoor',
+                      'tenant_id': 'tenant-demo-restro',
+                      'branch_id': 'branch-restro-main',
+                      'name': 'Outdoor Patio',
+                      'sort_order': 2,
+                    },
+                    {
+                      'id': 'sec-vip',
+                      'tenant_id': 'tenant-demo-restro',
+                      'branch_id': 'branch-restro-main',
+                      'name': 'VIP Lounge',
+                      'sort_order': 3,
+                    },
+                  ],
+                },
+              ));
+            }
+            if (options.path.contains('/admin/tables') && options.method == 'GET') {
+              final mockTablesData = RestroMockData.initialTables.map((t) => {
+                'id': t.id,
+                'tenant_id': 'tenant-demo-restro',
+                'branch_id': 'branch-restro-main',
+                'table_number': t.name,
+                'display_name': 'Table ${t.name}',
+                'capacity': t.seats,
+                'floor_id': 'floor-1',
+                'section_id': 'sec-main',
+                'sort_order': int.tryParse(t.name) ?? 1,
+                'assigned_waiter_id': 'staff-demo-1',
+                'notes': null,
+                'is_active': true,
+                'version_num': 1,
+                'runtime_state': t.status.toLowerCase() == 'booked' ? 'ACTIVE_GUESTS' : 'FREE',
+                'customer_payment_intent': null,
+                'guest_count': t.status.toLowerCase() == 'booked' ? t.seats : 0,
+              }).toList();
+              return handler.resolve(Response(
+                requestOptions: options,
+                statusCode: 200,
+                data: {
+                  'success': true,
+                  'data': mockTablesData,
+                },
+              ));
+            }
+            if (options.path.contains('/admin/tables/') && options.method == 'POST') {
+              return handler.resolve(Response(
+                requestOptions: options,
+                statusCode: 200,
+                data: {
+                  'success': true,
+                  'message': 'Success',
+                },
+              ));
+            }
+            if (options.path.contains('/menu/categories/tree')) {
+              final categoriesData = RestroMockData.categories.map((c) => {
+                'id': 'cat-${c.id}',
+                'tenant_id': 'tenant-demo-restro',
+                'parent_id': null,
+                'name': c.name,
+                'slug': c.name.toLowerCase().replaceAll(' ', '-'),
+                'description': null,
+                'image_url': null,
+                'sort_order': c.id,
+                'is_active': true,
+                'version_num': 1,
+                'created_at': DateTime.now().toIso8601String(),
+                'updated_at': DateTime.now().toIso8601String(),
+                'deleted_at': null,
+                'children': const [],
+              }).toList();
+              return handler.resolve(Response(
+                requestOptions: options,
+                statusCode: 200,
+                data: {
+                  'success': true,
+                  'data': categoriesData,
+                },
+              ));
+            }
+            if (options.path.contains('/menu/branch/')) {
+              final List<Map<String, dynamic>> itemsData = [];
+              for (final c in RestroMockData.categories) {
+                for (final item in c.items) {
+                  itemsData.add({
+                    'id': 'item-${item.id}',
+                    'tenant_id': 'tenant-demo-restro',
+                    'branch_id': 'branch-restro-main',
+                    'category_id': 'cat-${c.id}',
+                    'name': item.name,
+                    'slug': item.name.toLowerCase().replaceAll(' ', '-'),
+                    'description': '${item.emoji} Delicious ${item.name}',
+                    'short_description': item.name,
+                    'sku': 'SKU-${item.id}',
+                    'effective_price': item.price,
+                    'pricing_type': 'FIXED',
+                    'effective_tax_group_id': null,
+                    'dietary_tags': item.isVeg ? ['vegetarian'] : ['non-vegetarian'],
+                    'spice_level': 'medium',
+                    'prep_time_minutes': 15,
+                    'is_available': true,
+                    'is_featured': true,
+                    'image_url': null,
+                    'thumbnail_url': null,
+                    'sort_order': item.id,
+                    'modifier_groups': const [],
+                  });
+                }
+              }
+              return handler.resolve(Response(
+                requestOptions: options,
+                statusCode: 200,
+                data: {
+                  'success': true,
+                  'data': itemsData,
                 },
               ));
             }

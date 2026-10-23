@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart' hide Category;
 import '../../models/models.dart';
+import '../../mock/restro_mock_data.dart';
+import '../constants/app_config.dart';
 import '../services/menu_service.dart';
 
 // ─── Category emoji mapping ───────────────────────────────────
@@ -41,6 +43,13 @@ class MenuRepository {
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[MenuRepository] fetchCategories failed: $e');
+      }
+      if (AppConfig.allowMockFallbackInDebug) {
+        return RestroMockData.categories.map((c) => Category(
+          id: 'cat-${c.id}',
+          name: c.name,
+          icon: c.icon,
+        )).toList();
       }
       rethrow;
     }
@@ -99,6 +108,28 @@ class MenuRepository {
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[MenuRepository] fetchMenuItems failed: $e');
+      }
+      if (AppConfig.allowMockFallbackInDebug) {
+        final List<MenuItem> items = [];
+        for (final c in RestroMockData.categories) {
+          for (final item in c.items) {
+            items.add(MenuItem(
+              id: 'item-${item.id}',
+              name: item.name,
+              categoryId: 'cat-${c.id}',
+              price: item.price,
+              description: '${item.emoji} Delicious ${item.name}',
+              imageUrl: null,
+              isAvailable: true,
+              isVegetarian: item.isVeg,
+              isVegan: false,
+              preparationTimeMinutes: 15,
+              tags: [if (item.isVeg) 'vegetarian' else 'non-vegetarian'],
+              modifierGroups: const [],
+            ));
+          }
+        }
+        return items;
       }
       rethrow;
     }
