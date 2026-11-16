@@ -38,196 +38,211 @@ class RestroInvoiceDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final currencyFormat = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
     final formattedDate = DateFormat('MMM dd, yyyy • hh:mm a').format(DateTime.now());
+    final maxHeight = MediaQuery.sizeOf(context).height * 0.88;
 
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: EdgeInsets.symmetric(horizontal: 40.w, vertical: 24.h),
+      insetPadding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 16.h),
       child: Container(
         width: 440.w,
+        constraints: BoxConstraints(maxHeight: maxHeight),
         decoration: BoxDecoration(
-          color: const Color(0xFF262626),
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(20.r),
-          border: Border.all(color: const Color(0xFF383838)),
+          border: Border.all(color: AppColors.border),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.5),
-              blurRadius: 30,
-              offset: const Offset(0, 10),
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
-        padding: EdgeInsets.all(28.r),
+        padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 20.h),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // Success Check Icon
             Container(
-              width: 54.r,
-              height: 54.r,
+              width: 50.r,
+              height: 50.r,
               decoration: BoxDecoration(
-                color: const Color(0xFF2E4A40),
+                color: AppColors.statusReadyContainer,
                 shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFF22C55E), width: 3),
+                border: Border.all(color: AppColors.statusReady, width: 2.5),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.check,
-                color: Color(0xFF22C55E),
-                size: 28,
+                color: AppColors.statusReady,
+                size: 26,
               ),
             ),
 
-            Gap(16.h),
+            Gap(10.h),
 
             Text(
               'Order Receipt',
               style: TextStyle(
                 fontFamily: 'Inter',
-                fontSize: 22.sp,
+                fontSize: 20.sp,
                 fontWeight: FontWeight.w700,
-                color: const Color(0xFFF5F5F5),
+                color: AppColors.textPrimary,
               ),
             ),
-            Gap(4.h),
+            Gap(2.h),
             Text(
               'Thank you for your order!',
               style: TextStyle(
                 fontFamily: 'Inter',
-                fontSize: 13.sp,
-                color: const Color(0xFFABABAB),
+                fontSize: 12.sp,
+                color: AppColors.textSecondary,
               ),
             ),
 
-            Gap(20.h),
-            const Divider(color: Color(0xFF383838), thickness: 1),
-            Gap(12.h),
+            Gap(10.h),
+            Divider(color: AppColors.border, thickness: 1),
 
-            // Order Metadata
-            _buildMetaRow('Order ID:', '#$orderId'),
-            _buildMetaRow('Date & Time:', formattedDate),
-            _buildMetaRow('Table:', 'Table → $tableNo'),
-            _buildMetaRow('Customer:', customerName.isEmpty ? 'Walk-in Guest' : customerName),
-            if (customerPhone.isNotEmpty) _buildMetaRow('Phone:', customerPhone),
-            _buildMetaRow('Guests:', '$guests Person'),
+            // Scrollable Content
+            Flexible(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Gap(8.h),
+                    // Order Metadata
+                    _buildMetaRow('Order ID:', '#$orderId'),
+                    _buildMetaRow('Date & Time:', formattedDate),
+                    _buildMetaRow('Table:', 'Table → $tableNo'),
+                    _buildMetaRow('Customer:', customerName.isEmpty ? 'Walk-in Guest' : customerName),
+                    if (customerPhone.isNotEmpty) _buildMetaRow('Phone:', customerPhone),
+                    _buildMetaRow('Guests:', '$guests Person'),
 
-            Gap(16.h),
-            const Divider(color: Color(0xFF383838), thickness: 1),
-            Gap(12.h),
+                    Gap(10.h),
+                    Divider(color: AppColors.border, thickness: 1),
+                    Gap(10.h),
 
-            // Items Ordered List
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Items Ordered',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFFF5F5F5),
-                ),
-              ),
-            ),
-            Gap(8.h),
-            ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: 180.h),
-              child: ListView.separated(
-                shrinkWrap: true,
-                itemCount: items.length,
-                separatorBuilder: (_, __) => Gap(6.h),
-                itemBuilder: (context, i) {
-                  final line = items[i];
-                  return Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '${line.item.name} × ${line.quantity}',
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 13.sp,
-                          color: const Color(0xFFABABAB),
-                        ),
+                    // Items Ordered List
+                    Text(
+                      'Items Ordered',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
                       ),
-                      Text(
-                        currencyFormat.format(line.totalPrice),
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 13.sp,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFFF5F5F5),
+                    ),
+                    Gap(8.h),
+                    ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: items.length,
+                      separatorBuilder: (_, _) => Gap(6.h),
+                      itemBuilder: (context, i) {
+                        final line = items[i];
+                        return Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                '${line.item.name} × ${line.quantity}',
+                                style: TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontSize: 13.sp,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ),
+                            Gap(8.w),
+                            Text(
+                              currencyFormat.format(line.totalPrice),
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 13.sp,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+
+                    Gap(10.h),
+                    Divider(color: AppColors.border, thickness: 1),
+                    Gap(10.h),
+
+                    // Bills breakdown
+                    _buildAmountRow('Subtotal', currencyFormat.format(subtotal)),
+                    _buildAmountRow('Tax (GST 5%)', currencyFormat.format(tax)),
+                    Gap(6.h),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Grand Total',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
+                        Text(
+                          currencyFormat.format(total),
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 18.sp,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    Gap(10.h),
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceVariant,
+                        borderRadius: BorderRadius.circular(10.r),
                       ),
-                    ],
-                  );
-                },
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Payment Mode:',
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 12.sp,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          Text(
+                            paymentMethod,
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.statusReady,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Gap(6.h),
+                  ],
+                ),
               ),
             ),
 
-            Gap(16.h),
-            const Divider(color: Color(0xFF383838), thickness: 1),
+            Gap(10.h),
+            Divider(color: AppColors.border, thickness: 1),
             Gap(12.h),
 
-            // Bills breakdown
-            _buildAmountRow('Subtotal', currencyFormat.format(subtotal)),
-            _buildAmountRow('Tax (GST 5%)', currencyFormat.format(tax)),
-            Gap(6.h),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Grand Total',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 16.sp,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFFF5F5F5),
-                  ),
-                ),
-                Text(
-                  currencyFormat.format(total),
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 18.sp,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ],
-            ),
-
-            Gap(12.h),
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1F1F1F),
-                borderRadius: BorderRadius.circular(10.r),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Payment Mode:',
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 12.sp,
-                      color: const Color(0xFFABABAB),
-                    ),
-                  ),
-                  Text(
-                    paymentMethod,
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF22C55E),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            Gap(24.h),
-
-            // Actions
+            // Actions (Pinned at bottom)
             Row(
               children: [
                 Expanded(
@@ -236,11 +251,11 @@ class RestroInvoiceDialog extends StatelessWidget {
                       Navigator.of(context).pop();
                     },
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFF383838)),
+                      side: BorderSide(color: AppColors.border),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12.r),
                       ),
-                      padding: EdgeInsets.symmetric(vertical: 14.h),
+                      padding: EdgeInsets.symmetric(vertical: 12.h),
                     ),
                     child: Text(
                       'Close',
@@ -248,7 +263,7 @@ class RestroInvoiceDialog extends StatelessWidget {
                         fontFamily: 'Inter',
                         fontSize: 14.sp,
                         fontWeight: FontWeight.w600,
-                        color: const Color(0xFFABABAB),
+                        color: AppColors.textSecondary,
                       ),
                     ),
                   ),
@@ -261,9 +276,9 @@ class RestroInvoiceDialog extends StatelessWidget {
                         onPrint!();
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Receipt sent to thermal POS printer.'),
-                            backgroundColor: Color(0xFF262626),
+                          SnackBar(
+                            content: const Text('Receipt sent to thermal POS printer.'),
+                            backgroundColor: AppColors.textPrimary,
                           ),
                         );
                       }
@@ -271,11 +286,11 @@ class RestroInvoiceDialog extends StatelessWidget {
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
-                      foregroundColor: const Color(0xFF1F1F1F),
+                      foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12.r),
                       ),
-                      padding: EdgeInsets.symmetric(vertical: 14.h),
+                      padding: EdgeInsets.symmetric(vertical: 12.h),
                       elevation: 0,
                     ),
                     child: Row(
@@ -314,7 +329,7 @@ class RestroInvoiceDialog extends StatelessWidget {
             style: TextStyle(
               fontFamily: 'Inter',
               fontSize: 12.sp,
-              color: const Color(0xFFABABAB),
+              color: AppColors.textSecondary,
             ),
           ),
           Text(
@@ -323,7 +338,7 @@ class RestroInvoiceDialog extends StatelessWidget {
               fontFamily: 'Inter',
               fontSize: 12.sp,
               fontWeight: FontWeight.w600,
-              color: const Color(0xFFF5F5F5),
+              color: AppColors.textPrimary,
             ),
           ),
         ],
@@ -342,7 +357,7 @@ class RestroInvoiceDialog extends StatelessWidget {
             style: TextStyle(
               fontFamily: 'Inter',
               fontSize: 13.sp,
-              color: const Color(0xFFABABAB),
+              color: AppColors.textSecondary,
             ),
           ),
           Text(
@@ -351,7 +366,7 @@ class RestroInvoiceDialog extends StatelessWidget {
               fontFamily: 'Inter',
               fontSize: 13.sp,
               fontWeight: FontWeight.w600,
-              color: const Color(0xFFF5F5F5),
+              color: AppColors.textPrimary,
             ),
           ),
         ],

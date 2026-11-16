@@ -56,16 +56,16 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
     final ordersAsync = ref.watch(ordersProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF1F1F1F),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
             // ── Header ────────────────────────────────────────────────────
             Container(
               padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 14.h),
-              decoration: const BoxDecoration(
-                color: Color(0xFF1F1F1F),
-                border: Border(bottom: BorderSide(color: Color(0xFF383838))),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                border: Border(bottom: BorderSide(color: AppColors.border)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -78,10 +78,10 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                         child: Container(
                           padding: EdgeInsets.all(8.r),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF262626),
+                            color: AppColors.surfaceVariant,
                             borderRadius: BorderRadius.circular(10.r),
                           ),
-                          child: const Icon(Icons.arrow_back_ios_new, color: Color(0xFFF5F5F5), size: 18),
+                          child: Icon(Icons.arrow_back_ios_new, color: AppColors.textPrimary, size: 18),
                         ),
                       ),
                       Gap(16.w),
@@ -91,7 +91,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                           fontFamily: 'Inter',
                           fontSize: 22.sp,
                           fontWeight: FontWeight.w700,
-                          color: const Color(0xFFF5F5F5),
+                          color: AppColors.textPrimary,
                         ),
                       ),
                       Gap(12.w),
@@ -99,12 +99,12 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                         data: (orders) => Container(
                           padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF383838),
+                            color: AppColors.surfaceVariant,
                             borderRadius: BorderRadius.circular(8.r),
                           ),
                           child: Text(
                             '${orders.length} orders',
-                            style: TextStyle(color: const Color(0xFFABABAB), fontSize: 12.sp),
+                            style: TextStyle(color: AppColors.textSecondary, fontSize: 12.sp),
                           ),
                         ),
                         loading: () => const SizedBox.shrink(),
@@ -128,10 +128,10 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                         child: Container(
                           padding: EdgeInsets.all(8.r),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF262626),
+                            color: AppColors.surfaceVariant,
                             borderRadius: BorderRadius.circular(8.r),
                           ),
-                          child: const Icon(Icons.refresh, color: Color(0xFFABABAB), size: 18),
+                          child: Icon(Icons.refresh, color: AppColors.textSecondary, size: 18),
                         ),
                       ),
                     ],
@@ -145,20 +145,20 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
               padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
               child: TextField(
                 onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
-                style: const TextStyle(color: Color(0xFFF5F5F5)),
+                style: TextStyle(color: AppColors.textPrimary),
                 decoration: InputDecoration(
                   hintText: 'Search by table, order #, or customer...',
-                  hintStyle: const TextStyle(color: Color(0xFF888888)),
-                  prefixIcon: const Icon(Icons.search, color: Color(0xFF888888)),
+                  hintStyle: TextStyle(color: AppColors.textTertiary),
+                  prefixIcon: Icon(Icons.search, color: AppColors.textTertiary),
                   filled: true,
-                  fillColor: const Color(0xFF262626),
+                  fillColor: AppColors.surface,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10.r),
-                    borderSide: const BorderSide(color: Color(0xFF383838)),
+                    borderSide: BorderSide(color: AppColors.border),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10.r),
-                    borderSide: const BorderSide(color: Color(0xFF383838)),
+                    borderSide: BorderSide(color: AppColors.border),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10.r),
@@ -177,11 +177,11 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.wifi_off, size: 48.sp, color: const Color(0xFF888888)),
+                      Icon(Icons.wifi_off, size: 48.sp, color: AppColors.textTertiary),
                       Gap(16.h),
-                      Text('Could not load orders', style: TextStyle(color: const Color(0xFFF5F5F5), fontSize: 16.sp)),
+                      Text('Could not load orders', style: TextStyle(color: AppColors.textPrimary, fontSize: 16.sp)),
                       Gap(8.h),
-                      Text(err.toString(), style: const TextStyle(color: Color(0xFFABABAB)), textAlign: TextAlign.center),
+                      Text(err.toString(), style: TextStyle(color: AppColors.textSecondary), textAlign: TextAlign.center),
                       Gap(16.h),
                       OutlinedButton(
                         onPressed: () => ref.read(ordersProvider.notifier).fetchOrders(),
@@ -213,9 +213,9 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.receipt_long_outlined, size: 48.sp, color: const Color(0xFF888888)),
+                          Icon(Icons.receipt_long_outlined, size: 48.sp, color: AppColors.textTertiary),
                           Gap(12.h),
-                          Text('No orders found', style: TextStyle(color: const Color(0xFFABABAB), fontSize: 16.sp)),
+                          Text('No orders found', style: TextStyle(color: AppColors.textSecondary, fontSize: 16.sp)),
                         ],
                       ),
                     );
@@ -224,7 +224,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                   return ListView.separated(
                     padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 8.h),
                     itemCount: filtered.length,
-                    separatorBuilder: (_, _) => const Divider(color: Color(0xFF383838), height: 1),
+                    separatorBuilder: (_, _) => Divider(color: AppColors.border, height: 1),
                     itemBuilder: (context, i) => _buildOrderRow(filtered[i]),
                   );
                 },
@@ -245,8 +245,9 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
         duration: const Duration(milliseconds: 150),
         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF383838) : Colors.transparent,
+          color: isSelected ? AppColors.sidebarActiveBg : Colors.transparent,
           borderRadius: BorderRadius.circular(10.r),
+          border: isSelected ? Border.all(color: AppColors.primary) : null,
         ),
         child: Text(
           label,
@@ -254,7 +255,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
             fontFamily: 'Inter',
             fontSize: 13.sp,
             fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-            color: isSelected ? const Color(0xFFF5F5F5) : const Color(0xFFABABAB),
+            color: isSelected ? AppColors.sidebarActive : AppColors.textSecondary,
           ),
         ),
       ),
@@ -273,6 +274,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
       onTap: () {
         // Navigate to checkout/billing for this order
         ref.read(activeTableIdProvider.notifier).state = order.tableId;
+        ref.read(activeBillProvider.notifier).setOrder(order);
         context.go(AppRoutes.billing);
       },
       child: Padding(
@@ -303,7 +305,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                           fontFamily: 'Inter',
                           fontSize: 15.sp,
                           fontWeight: FontWeight.w700,
-                          color: const Color(0xFFF5F5F5),
+                          color: AppColors.textPrimary,
                         ),
                       ),
                       if (order.orderNumber != null) ...[
@@ -312,7 +314,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                           '#${order.orderNumber}',
                           style: TextStyle(
                             fontSize: 12.sp,
-                            color: const Color(0xFF888888),
+                            color: AppColors.textSecondary,
                           ),
                         ),
                       ],
@@ -325,7 +327,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                     ' · $timeLabel, $dateLabel',
                     style: TextStyle(
                       fontSize: 12.sp,
-                      color: const Color(0xFFABABAB),
+                      color: AppColors.textSecondary,
                     ),
                   ),
                 ],
@@ -341,7 +343,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                 fontFamily: 'Inter',
                 fontSize: 15.sp,
                 fontWeight: FontWeight.w700,
-                color: const Color(0xFFF5F5F5),
+                color: AppColors.textPrimary,
               ),
             ),
 
@@ -365,7 +367,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
             ),
 
             Gap(8.w),
-            const Icon(Icons.chevron_right, color: Color(0xFF888888), size: 20),
+            Icon(Icons.chevron_right, color: AppColors.textTertiary, size: 20),
           ],
         ),
       ),

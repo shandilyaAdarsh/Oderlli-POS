@@ -35,7 +35,7 @@ class _FloorScreenState extends ConsumerState<FloorScreen> {
   ];
 
   Color _getAvatarColor(String name) {
-    if (name.isEmpty) return const Color(0xFF383838);
+    if (name.isEmpty) return AppColors.surfaceVariant;
     final code = name.codeUnitAt(0);
     return _avatarColors[code % _avatarColors.length];
   }
@@ -72,10 +72,10 @@ class _FloorScreenState extends ConsumerState<FloorScreen> {
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
-        backgroundColor: const Color(0xFF262626),
+        backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16.r),
-          side: const BorderSide(color: Color(0xFF383838)),
+          side: BorderSide(color: AppColors.border),
         ),
         child: Container(
           width: 420.w,
@@ -92,10 +92,10 @@ class _FloorScreenState extends ConsumerState<FloorScreen> {
                       Container(
                         padding: EdgeInsets.all(8.r),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF2E4A40),
+                          color: AppColors.statusReadyContainer,
                           borderRadius: BorderRadius.circular(8.r),
                         ),
-                        child: const Icon(Icons.table_bar, color: Color(0xFF22C55E), size: 20),
+                        child: Icon(Icons.table_bar, color: AppColors.statusReady, size: 20),
                       ),
                       Gap(12.w),
                       Text(
@@ -104,7 +104,7 @@ class _FloorScreenState extends ConsumerState<FloorScreen> {
                           fontFamily: 'Inter',
                           fontSize: 18.sp,
                           fontWeight: FontWeight.w700,
-                          color: const Color(0xFFF5F5F5),
+                          color: AppColors.textPrimary,
                         ),
                       ),
                     ],
@@ -156,7 +156,7 @@ class _FloorScreenState extends ConsumerState<FloorScreen> {
                         }
                       },
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFF383838)),
+                        side: BorderSide(color: AppColors.border),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
                         padding: EdgeInsets.symmetric(vertical: 12.h),
                       ),
@@ -203,8 +203,8 @@ class _FloorScreenState extends ConsumerState<FloorScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: Color(0xFFABABAB), fontSize: 13)),
-          Text(value, style: const TextStyle(color: Color(0xFFF5F5F5), fontWeight: FontWeight.w600, fontSize: 13)),
+          Text(label, style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+          Text(value, style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
         ],
       ),
     );
@@ -222,17 +222,17 @@ class _FloorScreenState extends ConsumerState<FloorScreen> {
 
   Color _statusBgColor(POSTableStatus status) {
     return switch (status) {
-      POSTableStatus.available => const Color(0xFF664A04),
-      POSTableStatus.occupied || POSTableStatus.preparing || POSTableStatus.ready => const Color(0xFF2E4A40),
-      POSTableStatus.paymentPending => const Color(0xFF4A2E2E),
+      POSTableStatus.available => AppColors.statusPendingContainer,
+      POSTableStatus.occupied || POSTableStatus.preparing || POSTableStatus.ready => AppColors.statusReadyContainer,
+      POSTableStatus.paymentPending => const Color(0xFFFEE2E2),
     };
   }
 
   Color _statusTextColor(POSTableStatus status) {
     return switch (status) {
-      POSTableStatus.available => const Color(0xFFF5F5F5),
-      POSTableStatus.occupied || POSTableStatus.preparing || POSTableStatus.ready => const Color(0xFF22C55E),
-      POSTableStatus.paymentPending => const Color(0xFFEF4444),
+      POSTableStatus.available => AppColors.sidebarActive,
+      POSTableStatus.occupied || POSTableStatus.preparing || POSTableStatus.ready => AppColors.statusReady,
+      POSTableStatus.paymentPending => AppColors.error,
     };
   }
 
@@ -249,16 +249,16 @@ class _FloorScreenState extends ConsumerState<FloorScreen> {
     final liveTablesRaw = ref.watch(liveTableStatusProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF1F1F1F),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
             // ── Action Bar ─────────────────────────────────────────────────
             Container(
               padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 14.h),
-              decoration: const BoxDecoration(
-                color: Color(0xFF1F1F1F),
-                border: Border(bottom: BorderSide(color: Color(0xFF383838))),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                border: Border(bottom: BorderSide(color: AppColors.border)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -271,10 +271,10 @@ class _FloorScreenState extends ConsumerState<FloorScreen> {
                         child: Container(
                           padding: EdgeInsets.all(8.r),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF262626),
+                            color: AppColors.surfaceVariant,
                             borderRadius: BorderRadius.circular(10.r),
                           ),
-                          child: const Icon(Icons.arrow_back_ios_new, color: Color(0xFFF5F5F5), size: 18),
+                          child: Icon(Icons.arrow_back_ios_new, color: AppColors.textPrimary, size: 18),
                         ),
                       ),
                       Gap(16.w),
@@ -284,7 +284,7 @@ class _FloorScreenState extends ConsumerState<FloorScreen> {
                           fontFamily: 'Inter',
                           fontSize: 22.sp,
                           fontWeight: FontWeight.w700,
-                          color: const Color(0xFFF5F5F5),
+                          color: AppColors.textPrimary,
                           letterSpacing: 0.5,
                         ),
                       ),
@@ -293,12 +293,12 @@ class _FloorScreenState extends ConsumerState<FloorScreen> {
                         data: (tables) => Container(
                           padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF383838),
+                            color: AppColors.surfaceVariant,
                             borderRadius: BorderRadius.circular(8.r),
                           ),
                           child: Text(
                             '${tables.length} tables',
-                            style: TextStyle(color: const Color(0xFFABABAB), fontSize: 12.sp),
+                            style: TextStyle(color: AppColors.textSecondary, fontSize: 12.sp),
                           ),
                         ),
                         loading: () => const SizedBox.shrink(),
@@ -321,10 +321,10 @@ class _FloorScreenState extends ConsumerState<FloorScreen> {
                         child: Container(
                           padding: EdgeInsets.all(8.r),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF262626),
+                            color: AppColors.surfaceVariant,
                             borderRadius: BorderRadius.circular(8.r),
                           ),
-                          child: const Icon(Icons.refresh, color: Color(0xFFABABAB), size: 18),
+                          child: Icon(Icons.refresh, color: AppColors.textSecondary, size: 18),
                         ),
                       ),
                     ],
@@ -406,8 +406,9 @@ class _FloorScreenState extends ConsumerState<FloorScreen> {
         duration: const Duration(milliseconds: 150),
         padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 8.h),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF383838) : Colors.transparent,
+          color: isSelected ? AppColors.sidebarActiveBg : Colors.transparent,
           borderRadius: BorderRadius.circular(10.r),
+          border: isSelected ? Border.all(color: AppColors.primary) : null,
         ),
         child: Text(
           label,
@@ -415,7 +416,7 @@ class _FloorScreenState extends ConsumerState<FloorScreen> {
             fontFamily: 'Inter',
             fontSize: 14.sp,
             fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-            color: isSelected ? const Color(0xFFF5F5F5) : const Color(0xFFABABAB),
+            color: isSelected ? AppColors.sidebarActive : AppColors.textSecondary,
           ),
         ),
       ),
@@ -436,12 +437,19 @@ class _FloorScreenState extends ConsumerState<FloorScreen> {
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 14.h),
         decoration: BoxDecoration(
-          color: const Color(0xFF262626),
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(14.r),
           border: Border.all(
-            color: isOccupied ? _statusBgColor(table.status) : const Color(0xFF383838),
+            color: isOccupied ? _statusTextColor(table.status).withValues(alpha: 0.3) : AppColors.border,
             width: 1,
           ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -452,35 +460,16 @@ class _FloorScreenState extends ConsumerState<FloorScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Table',
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 13.sp,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFFF5F5F5),
-                        ),
-                      ),
-                      Gap(4.w),
-                      const Icon(Icons.arrow_forward_rounded, size: 12, color: Color(0xFFABABAB)),
-                      Gap(4.w),
-                      Flexible(
-                        child: Text(
-                          cleanTableNumber,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 15.sp,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFFF5F5F5),
-                          ),
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    'Table $cleanTableNumber',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                 ),
                 Gap(4.w),
@@ -508,13 +497,13 @@ class _FloorScreenState extends ConsumerState<FloorScreen> {
                 width: 56.r,
                 height: 56.r,
                 decoration: BoxDecoration(
-                  color: isOccupied ? avatarColor : const Color(0xFF383838),
+                  color: isOccupied ? avatarColor : AppColors.surfaceVariant,
                   shape: BoxShape.circle,
                   boxShadow: [
                     if (isOccupied)
                       BoxShadow(
-                        color: avatarColor.withValues(alpha: 0.35),
-                        blurRadius: 10,
+                        color: avatarColor.withValues(alpha: 0.25),
+                        blurRadius: 8,
                         offset: const Offset(0, 3),
                       ),
                   ],
@@ -532,7 +521,7 @@ class _FloorScreenState extends ConsumerState<FloorScreen> {
                         )
                       : Icon(
                           isOccupied ? Icons.person : Icons.table_restaurant,
-                          color: const Color(0xFF888888),
+                          color: AppColors.textSecondary,
                           size: 22.sp,
                         ),
                 ),
@@ -543,24 +532,36 @@ class _FloorScreenState extends ConsumerState<FloorScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  '${table.capacity} seats',
-                  style: TextStyle(fontFamily: 'Inter', fontSize: 11.sp, color: const Color(0xFFABABAB)),
+                Flexible(
+                  child: Text(
+                    '${table.capacity} seats',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontFamily: 'Inter', fontSize: 11.sp, color: AppColors.textSecondary),
+                  ),
                 ),
                 if (isOccupied && table.billTotal > 0)
-                  Text(
-                    CurrencyFormatter.format(table.billTotal),
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 11.sp,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primary,
+                  Flexible(
+                    child: Text(
+                      CurrencyFormatter.format(table.billTotal),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
                     ),
                   ),
                 if (isOccupied && table.occupiedSince != null && table.billTotal == 0)
-                  Text(
-                    _timeLabel(table.occupiedSince!),
-                    style: TextStyle(fontFamily: 'Inter', fontSize: 10.sp, color: const Color(0xFF888888)),
+                  Flexible(
+                    child: Text(
+                      _timeLabel(table.occupiedSince!),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontFamily: 'Inter', fontSize: 10.sp, color: AppColors.textTertiary),
+                    ),
                   ),
               ],
             ),

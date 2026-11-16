@@ -202,7 +202,7 @@ class _EmployeeLoginScreenState extends ConsumerState<EmployeeLoginScreen>
 
   Future<void> _onLogin() async {
     final auth = ref.read(authProvider);
-    final user = auth.isLocked ? auth.lockedUser : _selectedUser;
+    PosUser? user = _selectedUser ?? (auth.isLocked ? auth.lockedUser : null);
 
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -217,17 +217,31 @@ class _EmployeeLoginScreenState extends ConsumerState<EmployeeLoginScreen>
       });
 
       bool success = false;
-      if (auth.isLocked) {
+      if (auth.isLocked && (_selectedUser == null || _selectedUser?.id == auth.lockedUser?.id)) {
         // Unlock mode: check user PIN, or allow Manager PIN override
         success = await ref.read(authProvider.notifier).unlock(_pin);
         if (!success) {
           final staffListAsync = ref.read(staffListProvider);
-          final firstManager = staffListAsync.valueOrNull?.firstWhere(
+          final staffList = staffListAsync.valueOrNull ?? [];
+          final firstManager = staffList.firstWhere(
             (u) => u.role == UserRole.manager,
-            orElse: () => user,
+            orElse: () => user!,
           );
-          if (firstManager != null) {
+          if (firstManager.id != auth.lockedUser?.id) {
             success = await ref.read(authProvider.notifier).unlock(_pin, managerOverride: firstManager);
+          }
+          if (!success) {
+            // Also check if entered PIN matches ANY active staff member at this branch
+            for (final staffMember in staffList) {
+              if (staffMember.id != auth.lockedUser?.id) {
+                final matched = await ref.read(authProvider.notifier).loginEmployee(staffMember, _pin);
+                if (matched) {
+                  user = staffMember;
+                  success = true;
+                  break;
+                }
+              }
+            }
           }
         }
       } else {
@@ -237,7 +251,7 @@ class _EmployeeLoginScreenState extends ConsumerState<EmployeeLoginScreen>
       if (success) {
         ref.read(inactivityServiceProvider).resetTimer();
         if (mounted) {
-          setState(() => _feedbackText = 'Welcome back, ${user.name}! ✓');
+          setState(() => _feedbackText = 'Welcome back, ${user!.name}! ✓');
           await Future.delayed(const Duration(milliseconds: 380));
           if (mounted) {
             context.go('/dashboard');
@@ -504,7 +518,7 @@ class _EmployeeLoginScreenState extends ConsumerState<EmployeeLoginScreen>
                 itemBuilder: (context, index) {
                   final user = staff[index];
                   final isSelected = activeUser?.id == user.id;
-                  final isDisabled = auth.isLocked && user.id != auth.lockedUser?.id;
+                  final isDisabled = false;
                   return Padding(
                     padding: EdgeInsets.only(right: 10.w),
                     child: SizedBox(
@@ -524,7 +538,7 @@ class _EmployeeLoginScreenState extends ConsumerState<EmployeeLoginScreen>
                 itemBuilder: (context, index) {
                   final user = staff[index];
                   final isSelected = activeUser?.id == user.id;
-                  final isDisabled = auth.isLocked && user.id != auth.lockedUser?.id;
+                  final isDisabled = false;
                   return _buildStaffCard(user, isSelected, isDisabled);
                 },
               ),
@@ -569,7 +583,7 @@ class _EmployeeLoginScreenState extends ConsumerState<EmployeeLoginScreen>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (auth.isLocked) ...[
+                  if (auth.isLocked && (_selectedUser == null || _selectedUser?.id == auth.lockedUser?.id)) ...[
                     Container(
                       width: 60.r,
                       height: 60.r,
@@ -909,7 +923,7 @@ class _EmployeeLoginScreenState extends ConsumerState<EmployeeLoginScreen>
               ),
             ),
             data: (staff) {
-              final activeUser = auth.isLocked ? auth.lockedUser : _selectedUser;
+              final activeUser = _selectedUser ?? (auth.isLocked ? auth.lockedUser : null);
 
               final leftWidth = (context.screenWidth * 0.36).clamp(270.0, 390.0);
 

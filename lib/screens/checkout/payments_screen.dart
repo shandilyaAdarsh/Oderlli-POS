@@ -80,40 +80,25 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
     if (_activeTab == 0) {
       final raw = double.tryParse(_cashTendered) ?? 0.0;
       return (raw * 100).round();
-    } else if (_activeTab == 1 || _activeTab == 2) {
-      return remainingPaise;
     }
+    // Card and UPI automated gateways are out of scope in V3.11
     return 0;
   }
 
   Future<void> _onCompletePayment(double remainingVal) async {
+    if (_activeTab != 0) {
+      context.showWarningSnack(
+        'Automated payment gateways are out of scope for V3.11. Please process using Cash.',
+      );
+      return;
+    }
+
     // Clear any prior payment error before starting
     ref.read(activeBillProvider.notifier).clearPaymentError();
 
     setState(() {
-      if (_activeTab == 0) {
-        _loadingMessage = 'Recording Cash Payment...';
-      } else if (_activeTab == 1) {
-        _loadingMessage = 'Connecting to Card Reader...';
-      } else if (_activeTab == 2) {
-        _loadingMessage = 'Verifying UPI / QR Code scan...';
-      }
+      _loadingMessage = 'Recording Cash Payment...';
     });
-
-    if (_activeTab == 1) {
-      // Simulate multi-step card terminal response
-      await Future.delayed(const Duration(milliseconds: 600));
-      if (mounted) {
-        setState(() {
-          _loadingMessage = 'Authorizing card txn with bank...';
-        });
-      }
-      await Future.delayed(const Duration(milliseconds: 600));
-    } else {
-      await Future.delayed(const Duration(milliseconds: 1200));
-    }
-
-    if (!mounted) return;
 
     final billNotifier = ref.read(activeBillProvider.notifier);
     final billState = ref.read(activeBillProvider);
@@ -121,34 +106,22 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
     
     final remainingPaise = billState.amountRemainingPaise;
     try {
-      if (_activeTab == 0) {
-        // Cash payment
-        final amountPaise = _getCurrentTenderedAmountPaise(remainingPaise);
-        if (amountPaise <= 0) {
-          return;
-        }
-        final appliedAmountPaise = amountPaise > remainingPaise ? remainingPaise : amountPaise;
-        final appliedAmount = appliedAmountPaise / 100.0;
-        await billNotifier.addPayment('Cash', appliedAmount);
-        if (!mounted) return;
-        
-        final changePaise = amountPaise - remainingPaise;
-        final change = changePaise / 100.0;
-        if (change > 0) {
-          context.showSuccessSnack('Payment successful! Return change: ${change.asCurrency}');
-        } else {
-          context.showSuccessSnack('Cash payment of ${appliedAmount.asCurrency} recorded.');
-        }
-      } else if (_activeTab == 1) {
-        // Card payment
-        await billNotifier.addPayment('Card', remainingVal);
-        if (!mounted) return;
-        context.showSuccessSnack('Card payment of ${remainingVal.asCurrency} completed via PX terminal.');
-      } else if (_activeTab == 2) {
-        // UPI payment
-        await billNotifier.addPayment('UPI', remainingVal);
-        if (!mounted) return;
-        context.showSuccessSnack('UPI payment of ${remainingVal.asCurrency} scanned & approved.');
+      // Cash payment
+      final amountPaise = _getCurrentTenderedAmountPaise(remainingPaise);
+      if (amountPaise <= 0) {
+        return;
+      }
+      final appliedAmountPaise = amountPaise > remainingPaise ? remainingPaise : amountPaise;
+      final appliedAmount = appliedAmountPaise / 100.0;
+      await billNotifier.addPayment('Cash', appliedAmount);
+      if (!mounted) return;
+      
+      final changePaise = amountPaise - remainingPaise;
+      final change = changePaise / 100.0;
+      if (change > 0) {
+        context.showSuccessSnack('Payment successful! Return change: ${change.asCurrency}');
+      } else {
+        context.showSuccessSnack('Cash payment of ${appliedAmount.asCurrency} recorded.');
       }
 
       if (!mounted) return;
@@ -287,14 +260,14 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
                 ),
               ),
 
-            // ── 1. Tab headers (Cash, Card, UPI, Mixed) ──────────────────────
+            // ── 1. Tab headers (Cash active, Card & UPI disabled for V3.11) ──
             Row(
               children: [
-                _buildTabCard('CASH', Icons.money, 0),
+                _buildTabCard('CASH', Icons.money, 0, isEnabled: true),
                 Gap(12.w),
-                _buildTabCard('CARD', Icons.credit_card, 1),
+                _buildTabCard('CARD', Icons.credit_card, 1, isEnabled: false),
                 Gap(12.w),
-                _buildTabCard('UPI / QR', Icons.qr_code_scanner, 2),
+                _buildTabCard('UPI / QR', Icons.qr_code_scanner, 2, isEnabled: false),
               ],
             ),
             Gap(16.h),
@@ -461,23 +434,35 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
     );
   }
 
-  Widget _buildTabCard(String label, IconData icon, int tabIndex) {
+  Widget _buildTabCard(String label, IconData icon, int tabIndex, {bool isEnabled = true}) {
     final isSelected = _activeTab == tabIndex;
     return Expanded(
       child: POSCard(
-        onTap: () => setState(() {
-          _activeTab = tabIndex;
-        }),
+        onTap: isEnabled
+            ? () => setState(() {
+                  _activeTab = tabIndex;
+                })
+            : () {
+                context.showWarningSnack(
+                  '$label gateway integrations are out of scope for V3.11. Process payment via Cash.',
+                );
+              },
         isSelected: isSelected,
-        backgroundColor: isSelected ? AppColors.primary.withValues(alpha: 0.12) : AppColors.surface,
-        borderColor: isSelected ? AppColors.primary : AppColors.border,
+        backgroundColor: isSelected
+            ? AppColors.primary.withValues(alpha: 0.12)
+            : (isEnabled ? AppColors.surface : AppColors.surfaceVariant.withValues(alpha: 0.5)),
+        borderColor: isSelected
+            ? AppColors.primary
+            : (isEnabled ? AppColors.border : AppColors.borderSubtle),
         padding: EdgeInsets.symmetric(vertical: 14.h, horizontal: 8.w),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               icon,
-              color: isSelected ? AppColors.primary : AppColors.textSecondary,
+              color: isSelected
+                  ? AppColors.primary
+                  : (isEnabled ? AppColors.textSecondary : AppColors.textDisabled),
               size: 22.sp,
             ),
             Gap(10.w),
@@ -485,9 +470,11 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
               child: FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Text(
-                  label,
+                  isEnabled ? label : '$label (Disabled)',
                   style: AppTextStyles.titleSmall.copyWith(
-                    color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                    color: isSelected
+                        ? AppColors.primary
+                        : (isEnabled ? AppColors.textPrimary : AppColors.textDisabled),
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -646,46 +633,48 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
     );
   }
 
-  // CARD MODE LAYOUT
+  // CARD MODE LAYOUT (Disabled in V3.11)
   Widget _buildCardContent() {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const CircularProgressIndicator(color: AppColors.primary),
-          Gap(24.h),
-          Text('Waiting for swipe / tap on terminal...', style: AppTextStyles.titleLarge),
-          Gap(8.h),
-          Text('Terminal ID: PX-400-BAR', style: AppTextStyles.bodySmall),
-        ],
+      child: Padding(
+        padding: EdgeInsets.all(24.r),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.credit_card_off_rounded, size: 48.sp, color: AppColors.textSecondary),
+            Gap(16.h),
+            Text('Card Gateway Disabled (V3.11)', style: AppTextStyles.titleLarge),
+            Gap(8.h),
+            Text(
+              'Automated card capture is out of scope for V3.11 release.\nPlease select CASH to record payment.',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  // UPI MODE LAYOUT
+  // UPI MODE LAYOUT (Disabled in V3.11)
   Widget _buildUpiContent() {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.qr_code, size: 140.sp, color: AppColors.textPrimary),
-          Gap(16.h),
-          Text('Scan QR Code on Guest Screen', style: AppTextStyles.titleLarge),
-          Gap(12.h),
-          // UPI Branding logs
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildBrandBadge('GPAY'),
-              Gap(8.w),
-              _buildBrandBadge('PHONEPE'),
-              Gap(8.w),
-              _buildBrandBadge('PAYTM'),
-              Gap(8.w),
-              _buildBrandBadge('UPI'),
-            ],
-          ),
-        ],
+      child: Padding(
+        padding: EdgeInsets.all(24.r),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.qr_code_2_rounded, size: 48.sp, color: AppColors.textSecondary),
+            Gap(16.h),
+            Text('UPI Gateway Disabled (V3.11)', style: AppTextStyles.titleLarge),
+            Gap(8.h),
+            Text(
+              'Automated UPI gateway capture is out of scope for V3.11 release.\nPlease select CASH to record payment.',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -707,9 +696,6 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
       ),
     );
   }
-
-  // MIXED PAYMENT MODE LAYOUT REMOVED
-
 
 
   Widget _buildSummaryRow(String label, String value, {bool isHighlight = false, Color? color}) {

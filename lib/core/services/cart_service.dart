@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import '../../models/models.dart';
+import '../../constants/pos_constants.dart';
 import 'dio_client.dart';
 
 class CartService {
@@ -14,7 +15,7 @@ class CartService {
   Future<Cart> fetchCart(String qrSessionToken) async {
     if (qrSessionToken.isEmpty ||
         qrSessionToken == 'counter-session-token' ||
-        qrSessionToken == '00000000-0000-0000-0000-000000000001') {
+        qrSessionToken == PosConstants.counterTableId) {
       return Cart.empty();
     }
     final response = await dioClient.dio.get(

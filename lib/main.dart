@@ -12,6 +12,7 @@ import 'theme/app_theme.dart';
 import 'core/constants/app_constants.dart';
 import 'core/constants/app_config.dart';
 import 'widgets/widgets.dart';
+import 'core/utils/sentry_filter.dart';
 
 Future<void> _initializeApp() async {
   // Disable runtime Google Fonts network fetching — all fonts are bundled locally.
@@ -50,33 +51,22 @@ void main() async {
         options.dsn = AppConfig.sentryDsn;
         options.sendDefaultPii = true;
         options.tracesSampleRate = 1.0;
+        // ignore: experimental_member_use
         options.profilesSampleRate = 1.0;
         options.replay.sessionSampleRate = 0.1;
         options.replay.onErrorSampleRate = 1.0;
         options.enableLogs = true;
         options.environment = kReleaseMode ? 'production' : 'development';
         options.beforeSend = (event, hint) {
-          // Filter out synthetic verification test exceptions to eliminate test noise in Sentry
-          final throwable = event.throwable;
-          if (throwable is StateError &&
-              (throwable.message.contains('Sentry verification test event') ||
-               throwable.message.contains('This is test exception'))) {
+          // Filter out synthetic verification tests & development hot-restart artifacts
+          if (isIgnoredSentryEvent(event)) {
             return null;
-          }
-          final msg = event.message?.formatted ?? '';
-          if (msg.contains('Sentry verification test event') || msg.contains('This is test exception')) {
-            return null;
-          }
-          for (final exception in event.exceptions ?? <SentryException>[]) {
-            final val = exception.value ?? '';
-            if (val.contains('Sentry verification test event') || val.contains('This is test exception')) {
-              return null;
-            }
           }
           return event;
         };
       },
       appRunner: () async {
+        setupGlobalErrorHandlers();
         await _initializeApp();
         runApp(
           SentryWidget(
@@ -89,6 +79,7 @@ void main() async {
     );
   } else {
     WidgetsFlutterBinding.ensureInitialized();
+    setupGlobalErrorHandlers();
     await _initializeApp();
     runApp(
       const ProviderScope(
@@ -118,9 +109,9 @@ class OrderlyyApp extends ConsumerWidget {
           child: MaterialApp.router(
             title: 'Restro POS',
             debugShowCheckedModeBanner: false,
-            theme: AppTheme.dark,
-            darkTheme: AppTheme.dark,
-            themeMode: ThemeMode.dark,
+            theme: AppTheme.light,
+            darkTheme: AppTheme.light,
+            themeMode: ThemeMode.light,
             routerConfig: router,
             builder: (context, child) {
               final mediaQueryData = MediaQuery.of(context);

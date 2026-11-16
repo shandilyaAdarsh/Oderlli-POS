@@ -22,3 +22,4 @@ export 'cart_item.dart';
 export 'cart.dart';
 export 'receipt_request.dart';
 export 'payment_ledger.dart';
+export 'pos_notification.dart';

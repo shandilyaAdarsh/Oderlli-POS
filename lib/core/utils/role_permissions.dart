@@ -17,9 +17,8 @@ abstract final class RolePermissions {
   /// Employee permissions management (Manager only).
   static bool canManageEmployees(UserRole role) => role == UserRole.manager;
 
-  /// Billing, payments, and checkout screens (Manager and Cashiers).
-  static bool canAccessPayments(UserRole role) =>
-      role == UserRole.manager || role == UserRole.cashier;
+  /// Billing, payments, and checkout screens (All authenticated staff).
+  static bool canAccessPayments(UserRole role) => true;
 
   /// Editing item prices or applying custom discounts (Manager only).
   static bool canModifyPrices(UserRole role) => role == UserRole.manager;

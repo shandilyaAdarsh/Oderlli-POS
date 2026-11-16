@@ -4,9 +4,7 @@ abstract final class AppConfig {
   /// Compile-time override: pass --dart-define=API_BASE_URL=http://192.168.1.50:3001/api/v1
   static const String _envBaseUrl = String.fromEnvironment('API_BASE_URL');
 
-  static const String devUrl = kIsWeb
-      ? 'http://localhost:3001/api/v1'
-      : 'http://localhost:3001/api/v1';
+  static const String devUrl = 'http://localhost:3001/api/v1';
   static const String prodUrl = 'https://api.orderlyy.com/api/v1';
   static const String healthEndpoint = '/health';
 
@@ -22,11 +20,19 @@ abstract final class AppConfig {
         defaultTargetPlatform == TargetPlatform.windows ||
         defaultTargetPlatform == TargetPlatform.macOS ||
         defaultTargetPlatform == TargetPlatform.linux) {
-      return 'http://localhost:3001/api/v1';
+      return devUrl;
     }
 
     // 4. Mobile debug — use env override or localhost
     return devUrl;
+  }
+
+  static String get websocketUrl {
+    final base = baseUrl;
+    final wsBase = base.startsWith('https://')
+        ? base.replaceFirst('https://', 'wss://')
+        : base.replaceFirst('http://', 'ws://');
+    return '$wsBase/realtime';
   }
 
   static const String deviceFingerprintKey = 'device_fingerprint';
@@ -36,7 +42,7 @@ abstract final class AppConfig {
   static const String authUserKey = 'auth_user_json';
   static const String runtimeTokenKey = 'runtime_token';
 
-  static bool allowMockFallbackInDebug = true;
+  static bool allowMockFallbackInDebug = false;
 
   static const String printerIp = String.fromEnvironment('PRINTER_IP', defaultValue: '');
 

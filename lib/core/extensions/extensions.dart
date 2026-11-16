@@ -58,6 +58,13 @@ extension BuildContextX on BuildContext {
       backgroundColor: AppColors.error,
     ));
 
+  void showWarningSnack(String message) => ScaffoldMessenger.of(this)
+    ..clearSnackBars()
+    ..showSnackBar(SnackBar(
+      content: Text(message),
+      backgroundColor: AppColors.warning,
+    ));
+
   void showInfoSnack(String message) => ScaffoldMessenger.of(this)
     ..clearSnackBars()
     ..showSnackBar(SnackBar(

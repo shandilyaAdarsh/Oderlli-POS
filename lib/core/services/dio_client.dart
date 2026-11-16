@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/auth_provider.dart';
 import '../../mock/restro_mock_data.dart';
 import '../constants/app_config.dart';
@@ -365,12 +366,34 @@ class DioClient {
           final fingerprint = await _fingerprintService.getOrCreateFingerprint();
           options.headers['X-Device-Fingerprint'] = fingerprint;
 
-          // Inject tenant id if present in auth state and not already set
+          // Inject tenant id & branch id if present and not already set
           if (_ref != null) {
             final authState = _ref.read(authProvider);
-            if (authState.tenantId != null && !options.headers.containsKey('x-tenant-id')) {
-              options.headers['x-tenant-id'] = authState.tenantId;
+            final tenantId = authState.tenantId;
+            final branchId = authState.branchId;
+            if (tenantId != null && !options.headers.containsKey('x-tenant-id')) {
+              options.headers['x-tenant-id'] = tenantId;
             }
+            if (branchId != null && !options.headers.containsKey('x-branch-id')) {
+              options.headers['x-branch-id'] = branchId;
+            }
+          }
+          if (!options.headers.containsKey('x-tenant-id') || !options.headers.containsKey('x-branch-id')) {
+            try {
+              final prefs = await SharedPreferences.getInstance();
+              if (!options.headers.containsKey('x-tenant-id')) {
+                final tid = prefs.getString('active_tenant_id');
+                if (tid != null && tid.isNotEmpty) {
+                  options.headers['x-tenant-id'] = tid;
+                }
+              }
+              if (!options.headers.containsKey('x-branch-id')) {
+                final bid = prefs.getString('active_branch_id');
+                if (bid != null && bid.isNotEmpty) {
+                  options.headers['x-branch-id'] = bid;
+                }
+              }
+            } catch (_) {}
           }
 
           // Inject Access/Runtime Token header (if not already set manually)

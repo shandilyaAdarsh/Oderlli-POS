@@ -10,6 +10,9 @@ import '../../theme/theme.dart';
 import '../../mock/restro_mock_data.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/restro_pos_provider.dart';
+import '../../providers/orders_provider.dart';
+import '../../providers/menu_provider.dart';
+import '../../models/models.dart';
 import '../../routes/app_routes.dart';
 import '../../widgets/restro_header.dart';
 import '../../widgets/restro_bottom_nav.dart';
@@ -52,7 +55,29 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
     final userName = user?.name ?? 'Admin User';
-    final orders = ref.watch(restroOrdersProvider);
+    final backendOrders = ref.watch(ordersProvider).valueOrNull ?? [];
+    final liveOrders = backendOrders.map((o) {
+      final statusStr = switch (o.status) {
+        OrderStatus.ready => 'Ready',
+        OrderStatus.preparing || OrderStatus.accepted => 'In Progress',
+        OrderStatus.pending => 'Pending',
+        OrderStatus.served || OrderStatus.completed => 'Completed',
+        OrderStatus.cancelled => 'Cancelled',
+        OrderStatus.syncConflict => 'Conflict',
+      };
+      return RestroOrder(
+        id: o.id,
+        customer: o.notes?.replaceAll('Customer: ', '') ?? 'Walk-in Guest',
+        status: statusStr,
+        dateTime: o.createdAt,
+        itemCount: o.items.fold(0, (sum, i) => sum + i.quantity),
+        tableNo: o.tableNumber > 0 ? '${o.tableNumber}' : 'Counter',
+        total: o.grandTotalMinor / 100.0,
+        itemNames: o.items.map((i) => '${i.itemNameSnapshot} (${i.quantity})').toList(),
+      );
+    }).toList();
+    final localOrders = ref.watch(restroOrdersProvider);
+    final orders = liveOrders.isNotEmpty ? liveOrders : localOrders;
     final searchQuery = ref.watch(restroGlobalSearchProvider).toLowerCase();
 
     final filteredOrders = orders.where((o) {
@@ -62,12 +87,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           o.status.toLowerCase().contains(searchQuery);
     }).toList();
 
-    final readyOrders = orders.where((o) => o.status == 'Ready').length;
     final inProgressOrders = orders.where((o) => o.status == 'In Progress').length;
     final totalRevenue = orders.fold(0.0, (sum, o) => sum + o.total);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF1F1F1F),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -135,8 +159,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         Container(
           padding: EdgeInsets.all(4.r),
           decoration: BoxDecoration(
-            color: const Color(0xFF1A1A1A),
+            color: AppColors.surface,
             borderRadius: BorderRadius.circular(12.r),
+            border: Border.all(color: AppColors.border, width: 1),
           ),
           child: Row(
             children: [
@@ -157,21 +182,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }) {
     return ElevatedButton.icon(
       onPressed: onTap,
-      icon: Icon(icon, size: 18, color: const Color(0xFFF5F5F5)),
+      icon: Icon(icon, size: 18, color: AppColors.textPrimary),
       label: Text(
         label,
         style: TextStyle(
           fontFamily: 'Inter',
           fontSize: 13.sp,
           fontWeight: FontWeight.w600,
-          color: const Color(0xFFF5F5F5),
+          color: AppColors.textPrimary,
         ),
       ),
       style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFF262626),
+        backgroundColor: AppColors.surface,
+        foregroundColor: AppColors.textPrimary,
         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10.r),
+          side: const BorderSide(color: AppColors.border, width: 1),
         ),
         elevation: 0,
       ),
@@ -187,8 +214,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         duration: const Duration(milliseconds: 150),
         padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 8.h),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF262626) : Colors.transparent,
+          color: isSelected ? AppColors.sidebarActiveBg : Colors.transparent,
           borderRadius: BorderRadius.circular(8.r),
+          border: isSelected
+              ? Border.all(color: AppColors.primary.withValues(alpha: 0.3), width: 1)
+              : null,
         ),
         child: Text(
           tab,
@@ -196,7 +226,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             fontFamily: 'Inter',
             fontSize: 13.sp,
             fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-            color: isSelected ? const Color(0xFFF5F5F5) : const Color(0xFFABABAB),
+            color: isSelected ? AppColors.sidebarTextActive : AppColors.sidebarText,
           ),
         ),
       ),
@@ -227,8 +257,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               Container(
                 padding: EdgeInsets.all(20.r),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1A1A1A),
+                  color: AppColors.surface,
                   borderRadius: BorderRadius.circular(16.r),
+                  border: Border.all(color: AppColors.border, width: 1),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x06000000),
+                      blurRadius: 10,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -245,7 +283,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               fontFamily: 'Inter',
                               fontSize: 22.sp,
                               fontWeight: FontWeight.w700,
-                              color: const Color(0xFFF5F5F5),
+                              color: AppColors.textPrimary,
                             ),
                           ),
                           Gap(4.h),
@@ -256,7 +294,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             style: TextStyle(
                               fontFamily: 'Inter',
                               fontSize: 13.sp,
-                              color: const Color(0xFFABABAB),
+                              color: AppColors.textSecondary,
                             ),
                           ),
                         ],
@@ -283,7 +321,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           style: TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 12.sp,
-                            color: const Color(0xFFABABAB),
+                            color: AppColors.textSecondary,
                           ),
                         ),
                       ],
@@ -301,7 +339,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     child: _buildMiniCard(
                       title: 'Total Earnings',
                       icon: Icons.monetization_on_outlined,
-                      value: '₹${NumberFormat('#,##,###').format(totalRevenue + 512000)}',
+                      value: '₹${NumberFormat('#,##,###').format(totalRevenue)}',
                       footerPercent: '+1.6%',
                       accentColor: AppColors.primary,
                     ),
@@ -348,8 +386,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     return Container(
       padding: EdgeInsets.all(20.r),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1A1A),
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(color: AppColors.border, width: 1),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x06000000),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -366,7 +412,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     fontFamily: 'Inter',
                     fontSize: 13.sp,
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFFABABAB),
+                    color: AppColors.textSecondary,
                   ),
                 ),
               ),
@@ -390,7 +436,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               fontFamily: 'Inter',
               fontSize: 24.sp,
               fontWeight: FontWeight.w800,
-              color: const Color(0xFFF5F5F5),
+              color: AppColors.textPrimary,
             ),
           ),
           Gap(8.h),
@@ -422,8 +468,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     return Container(
       padding: EdgeInsets.all(20.r),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1A1A),
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(color: AppColors.border, width: 1),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x06000000),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -437,7 +491,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   fontFamily: 'Inter',
                   fontSize: 17.sp,
                   fontWeight: FontWeight.w700,
-                  color: const Color(0xFFF5F5F5),
+                  color: AppColors.textPrimary,
                 ),
               ),
               TextButton(
@@ -448,7 +502,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     fontFamily: 'Inter',
                     fontSize: 13.sp,
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFF025CCA),
+                    color: AppColors.neutral,
                   ),
                 ),
               ),
@@ -463,7 +517,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               child: const Center(
                 child: Text(
                   'No recent orders available',
-                  style: TextStyle(color: Color(0xFFABABAB)),
+                  style: TextStyle(color: AppColors.textSecondary),
                 ),
               ),
             )
@@ -472,7 +526,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: orders.take(5).length,
-              separatorBuilder: (_, __) => Gap(12.h),
+              separatorBuilder: (_, _) => Gap(12.h),
               itemBuilder: (context, i) {
                 final order = orders[i];
                 final initials = order.customer
@@ -487,8 +541,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 return Container(
                   padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1F1F1F),
+                    color: AppColors.surfaceVariant,
                     borderRadius: BorderRadius.circular(12.r),
+                    border: Border.all(color: AppColors.border, width: 1),
                   ),
                   child: Row(
                     children: [
@@ -507,7 +562,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               fontFamily: 'Inter',
                               fontSize: 14.sp,
                               fontWeight: FontWeight.w800,
-                              color: const Color(0xFF1F1F1F),
+                              color: Colors.white,
                             ),
                           ),
                         ),
@@ -527,7 +582,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 fontFamily: 'Inter',
                                 fontSize: 14.sp,
                                 fontWeight: FontWeight.w600,
-                                color: const Color(0xFFF5F5F5),
+                                color: AppColors.textPrimary,
                               ),
                             ),
                             Gap(2.h),
@@ -538,7 +593,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               style: TextStyle(
                                 fontFamily: 'Inter',
                                 fontSize: 12.sp,
-                                color: const Color(0xFFABABAB),
+                                color: AppColors.textSecondary,
                               ),
                             ),
                           ],
@@ -559,14 +614,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               style: TextStyle(
                                 fontFamily: 'Inter',
                                 fontSize: 11.sp,
-                                color: const Color(0xFFABABAB),
+                                color: AppColors.textSecondary,
                               ),
                             ),
                             Gap(4.w),
-                            const Icon(
+                            Icon(
                               Icons.arrow_forward_rounded,
                               size: 12,
-                              color: Color(0xFFABABAB),
+                              color: AppColors.textSecondary,
                             ),
                             Gap(4.w),
                             Text(
@@ -588,7 +643,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       Container(
                         padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                         decoration: BoxDecoration(
-                          color: isReady ? const Color(0xFF2E4A40) : const Color(0xFF4A452E),
+                          color: isReady ? AppColors.statusReadyContainer : AppColors.statusPendingContainer,
                           borderRadius: BorderRadius.circular(8.r),
                         ),
                         child: Row(
@@ -596,7 +651,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             Icon(
                               isReady ? Icons.done_all : Icons.circle,
                               size: 14,
-                              color: isReady ? const Color(0xFF22C55E) : AppColors.primary,
+                              color: isReady ? AppColors.statusReady : AppColors.sidebarActive,
                             ),
                             Gap(6.w),
                             Text(
@@ -605,7 +660,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 fontFamily: 'Inter',
                                 fontSize: 11.sp,
                                 fontWeight: FontWeight.w700,
-                                color: isReady ? const Color(0xFF22C55E) : AppColors.primary,
+                                color: isReady ? AppColors.statusReady : AppColors.sidebarActive,
                               ),
                             ),
                           ],
@@ -624,13 +679,29 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   // ─── Popular Dishes (PopularDishes.jsx) ─────────────────────────────────────
 
   Widget _buildPopularDishesCard() {
-    final dishes = RestroMockData.popularDishes;
+    final menuItems = ref.watch(menuItemsProvider).valueOrNull ?? [];
+    final dishes = menuItems.isNotEmpty
+        ? menuItems.take(5).toList().asMap().entries.map((entry) {
+            final idx = entry.key + 1;
+            final item = entry.value;
+            return RestroPopularDish(
+              id: idx,
+              name: item.name,
+              numberOfOrders: 10 + (idx * 3),
+              price: item.price,
+              emoji: '🍽️',
+              category: 'Featured',
+              isVeg: item.isVegetarian,
+            );
+          }).toList()
+        : RestroMockData.popularDishes;
 
     return Container(
       padding: EdgeInsets.all(20.r),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1A1A),
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -644,7 +715,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   fontFamily: 'Inter',
                   fontSize: 17.sp,
                   fontWeight: FontWeight.w700,
-                  color: const Color(0xFFF5F5F5),
+                  color: AppColors.textPrimary,
                 ),
               ),
               TextButton(
@@ -668,7 +739,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: dishes.length,
-            separatorBuilder: (_, __) => Gap(10.h),
+            separatorBuilder: (_, _) => Gap(10.h),
             itemBuilder: (context, i) {
               final dish = dishes[i];
               final rankStr = dish.id < 10 ? '0${dish.id}' : '${dish.id}';
@@ -676,8 +747,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               return Container(
                 padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1F1F1F),
+                  color: AppColors.surfaceElevated,
                   borderRadius: BorderRadius.circular(14.r),
+                  border: Border.all(color: AppColors.borderSubtle),
                 ),
                 child: Row(
                   children: [
@@ -687,7 +759,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         fontFamily: 'Inter',
                         fontSize: 16.sp,
                         fontWeight: FontWeight.w800,
-                        color: const Color(0xFFF5F5F5),
+                        color: AppColors.textPrimary,
                       ),
                     ),
                     Gap(14.w),
@@ -695,9 +767,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       width: 44.r,
                       height: 44.r,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF262626),
+                        color: AppColors.surfaceVariant,
                         shape: BoxShape.circle,
-                        border: Border.all(color: const Color(0xFF383838)),
+                        border: Border.all(color: AppColors.border),
                       ),
                       child: Center(
                         child: Text(dish.emoji, style: TextStyle(fontSize: 22.sp)),
@@ -716,7 +788,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               fontFamily: 'Inter',
                               fontSize: 14.sp,
                               fontWeight: FontWeight.w600,
-                              color: const Color(0xFFF5F5F5),
+                              color: AppColors.textPrimary,
                             ),
                           ),
                           Gap(2.h),
@@ -725,7 +797,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             style: TextStyle(
                               fontFamily: 'Inter',
                               fontSize: 12.sp,
-                              color: const Color(0xFFABABAB),
+                              color: AppColors.textSecondary,
                             ),
                           ),
                         ],
@@ -753,7 +825,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text('Added ${dish.name} to cart!'),
-                            backgroundColor: const Color(0xFF262626),
+                            backgroundColor: AppColors.textPrimary,
                             duration: const Duration(seconds: 1),
                           ),
                         );
@@ -788,7 +860,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     fontFamily: 'Inter',
                     fontSize: 20.sp,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFFF5F5F5),
+                    color: AppColors.textPrimary,
                   ),
                 ),
                 Gap(4.h),
@@ -797,7 +869,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   style: TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 13.sp,
-                    color: const Color(0xFFABABAB),
+                    color: AppColors.textSecondary,
                   ),
                 ),
               ],
@@ -805,8 +877,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             Container(
               padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
               decoration: BoxDecoration(
-                color: const Color(0xFF1A1A1A),
+                color: AppColors.surface,
                 borderRadius: BorderRadius.circular(8.r),
+                border: Border.all(color: AppColors.border),
               ),
               child: Row(
                 children: [
@@ -815,11 +888,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     style: TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 12.sp,
-                      color: const Color(0xFFF5F5F5),
+                      color: AppColors.textPrimary,
                     ),
                   ),
                   Gap(6.w),
-                  const Icon(Icons.arrow_drop_down, color: Color(0xFFF5F5F5), size: 16),
+                  Icon(Icons.arrow_drop_down, color: AppColors.textPrimary, size: 16),
                 ],
               ),
             ),
@@ -918,7 +991,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 fontFamily: 'Inter',
                 fontSize: 20.sp,
                 fontWeight: FontWeight.w700,
-                color: const Color(0xFFF5F5F5),
+                color: AppColors.textPrimary,
               ),
             ),
             Gap(4.h),
@@ -927,7 +1000,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               style: TextStyle(
                 fontFamily: 'Inter',
                 fontSize: 13.sp,
-                color: const Color(0xFFABABAB),
+                color: AppColors.textSecondary,
               ),
             ),
           ],
@@ -1022,8 +1095,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     return Container(
       padding: EdgeInsets.all(20.r),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1A1A),
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1034,7 +1108,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               fontFamily: 'Inter',
               fontSize: 18.sp,
               fontWeight: FontWeight.w700,
-              color: const Color(0xFFF5F5F5),
+              color: AppColors.textPrimary,
             ),
           ),
           Gap(16.h),
@@ -1042,7 +1116,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: orders.length,
-            separatorBuilder: (_, __) => const Divider(color: Color(0xFF2E2E2E)),
+            separatorBuilder: (_, _) => Divider(color: AppColors.border),
             itemBuilder: (context, i) {
               final o = orders[i];
               return ListTile(
@@ -1051,16 +1125,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   backgroundColor: AppColors.primary,
                   child: Text(
                     o.customer.isNotEmpty ? o.customer[0].toUpperCase() : 'G',
-                    style: const TextStyle(color: Color(0xFF1F1F1F), fontWeight: FontWeight.bold),
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                   ),
                 ),
                 title: Text(
                   o.customer,
-                  style: const TextStyle(color: Color(0xFFF5F5F5), fontWeight: FontWeight.w600),
+                  style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
                 ),
                 subtitle: Text(
                   'Table ${o.tableNo} • ${o.itemCount} items • ${DateFormat('hh:mm a').format(o.dateTime)}',
-                  style: const TextStyle(color: Color(0xFFABABAB)),
+                  style: TextStyle(color: AppColors.textSecondary),
                 ),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -1079,10 +1153,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
                       decoration: BoxDecoration(
                         color: o.status == 'Ready'
-                            ? const Color(0xFF2E4A40)
+                            ? AppColors.statusReadyContainer
                             : (o.status == 'Completed'
-                                ? const Color(0xFF1D2569)
-                                : const Color(0xFF4A452E)),
+                                ? const Color(0xFFEDE9FE)
+                                : AppColors.statusPendingContainer),
                         borderRadius: BorderRadius.circular(6.r),
                       ),
                       child: Text(
@@ -1091,10 +1165,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           fontSize: 11.sp,
                           fontWeight: FontWeight.w700,
                           color: o.status == 'Ready'
-                              ? const Color(0xFF22C55E)
+                              ? AppColors.statusReady
                               : (o.status == 'Completed'
-                                  ? const Color(0xFF8B5CF6)
-                                  : AppColors.primary),
+                                  ? const Color(0xFF7C3AED)
+                                  : AppColors.sidebarActive),
                         ),
                       ),
                     ),
@@ -1118,10 +1192,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => Dialog(
-          backgroundColor: const Color(0xFF262626),
+          backgroundColor: AppColors.surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16.r),
-            side: const BorderSide(color: Color(0xFF383838)),
+            side: BorderSide(color: AppColors.border),
           ),
           child: Container(
             width: 400.w,
@@ -1139,33 +1213,34 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         fontFamily: 'Inter',
                         fontSize: 18.sp,
                         fontWeight: FontWeight.w700,
-                        color: const Color(0xFFF5F5F5),
+                        color: AppColors.textPrimary,
                       ),
                     ),
                     IconButton(
                       onPressed: () => Navigator.of(ctx).pop(),
-                      icon: const Icon(Icons.close, color: Color(0xFFABABAB)),
+                      icon: Icon(Icons.close, color: AppColors.textSecondary),
                     ),
                   ],
                 ),
                 Gap(16.h),
                 Text(
                   'Table Number / Name',
-                  style: TextStyle(color: const Color(0xFFABABAB), fontSize: 13.sp),
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 13.sp),
                 ),
                 Gap(6.h),
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 14.w),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1F1F1F),
+                    color: AppColors.surfaceVariant,
                     borderRadius: BorderRadius.circular(10.r),
+                    border: Border.all(color: AppColors.border),
                   ),
                   child: TextField(
                     controller: tableNoCtrl,
-                    style: const TextStyle(color: Color(0xFFF5F5F5)),
-                    decoration: const InputDecoration(
+                    style: TextStyle(color: AppColors.textPrimary),
+                    decoration: InputDecoration(
                       hintText: 'e.g. 16, Patio-1',
-                      hintStyle: TextStyle(color: Color(0xFF666666)),
+                      hintStyle: TextStyle(color: AppColors.textTertiary),
                       border: InputBorder.none,
                       filled: false,
                     ),
@@ -1174,7 +1249,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 Gap(16.h),
                 Text(
                   'Seats Capacity: $seats',
-                  style: TextStyle(color: const Color(0xFFABABAB), fontSize: 13.sp),
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 13.sp),
                 ),
                 Gap(6.h),
                 Slider(
@@ -1183,7 +1258,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   max: 12,
                   divisions: 11,
                   activeColor: AppColors.primary,
-                  inactiveColor: const Color(0xFF383838),
+                  inactiveColor: AppColors.border,
                   onChanged: (val) {
                     setDialogState(() => seats = val.toInt());
                   },
@@ -1204,14 +1279,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text('Table $tableNo added successfully!'),
-                            backgroundColor: const Color(0xFF262626),
+                            backgroundColor: AppColors.textPrimary,
                           ),
                         );
                       }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
-                      foregroundColor: const Color(0xFF1F1F1F),
+                      foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10.r),
                       ),

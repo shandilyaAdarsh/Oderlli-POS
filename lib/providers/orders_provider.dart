@@ -61,20 +61,26 @@ class OrdersNotifier extends AsyncNotifier<List<Order>> {
         ),
       ).tableName;
 
+      final customerStr = summary.customerName != null && summary.customerName!.isNotEmpty
+          ? 'Customer: ${summary.customerName}'
+          : null;
+      final effectiveNotes = summary.orderNotes ?? customerStr;
+
       return Order(
         id: summary.id,
         tableId: summary.tableId,
         tableNumber: int.tryParse(tableNum) ?? 0,
+        orderNumber: summary.orderNumber,
         items: summary.items.map((i) => OrderItem(
           id: '',
           menuItemId: '',
           itemNameSnapshot: i.name,
-          unitPriceMinor: 0,
+          unitPriceMinor: i.unitPriceMinor,
           quantity: i.qty,
         )).toList(),
         createdAt: summary.createdAt,
         status: summary.status,
-        notes: summary.orderNotes,
+        notes: effectiveNotes,
         grandTotalMinor: summary.grandTotalMinor,
         customerPaymentIntent: summary.customerPaymentIntent,
       );
@@ -93,7 +99,6 @@ class OrdersNotifier extends AsyncNotifier<List<Order>> {
       }
     }
   }
-// (Methods moved above/replaced)
 
   Future<Order> checkout({
     required String tenantId,
@@ -123,8 +128,9 @@ class OrdersNotifier extends AsyncNotifier<List<Order>> {
       int finalCartRevision = expectedCartRevision;
 
       final counterTable = ref.read(counterTableProvider);
-      if (counterTable != null && tableId == counterTable.id) {
-        debugPrint('[DEBUG] Detected counter table checkout! Syncing cart to backend...');
+      final isCounter = counterTable != null && tableId == counterTable.id;
+      if (isCounter || finalCartId.isEmpty) {
+        debugPrint('[DEBUG] Syncing cart to backend for tableId=$tableId...');
         final itemsToSync = cartState.items.map((item) => {
           'menuItem': item.menuItem,
           'quantity': item.qty,

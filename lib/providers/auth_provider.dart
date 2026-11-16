@@ -431,7 +431,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       debugPrint('[fetchBranches] State transitioning to Data with ${filtered.length} branches.');
     } catch (e, st) {
       debugPrint('[fetchBranches] Exception: $e\n$st');
-      if (kDebugMode || AppConfig.allowMockFallbackInDebug) {
+      if (AppConfig.allowMockFallbackInDebug) {
         const demoBranch = BranchInfo(
           id: 'branch-restro-main',
           name: 'Restro Main Branch',

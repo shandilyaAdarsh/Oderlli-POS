@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../theme/theme.dart';
 import '../../widgets/widgets.dart';
 import '../../providers/providers.dart';
+import '../../routes/app_routes.dart';
 import '../../core/extensions/extensions.dart';
 
 /// ─── Orderlyy POS · Checkout Shell ──────────────────────────────────────────
@@ -26,11 +27,80 @@ class CheckoutShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final billState = ref.watch(activeBillProvider);
 
-    if (billState == null || !billState.paymentsHydrated) {
-      return const Scaffold(
+    if (billState == null) {
+      return Scaffold(
         backgroundColor: AppColors.background,
+        appBar: AppBar(
+          backgroundColor: AppColors.surface,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back_ios_new, color: AppColors.textPrimary, size: 18),
+            onPressed: () => context.go(AppRoutes.orders),
+          ),
+          title: Text(
+            'Checkout & Settlement',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 18.sp,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ),
         body: Center(
-          child: CircularProgressIndicator(color: AppColors.primary),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 64.r,
+                height: 64.r,
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceVariant,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Icon(
+                  Icons.receipt_long_outlined,
+                  color: AppColors.textSecondary,
+                  size: 32,
+                ),
+              ),
+              Gap(16.h),
+              Text(
+                'No Active Order Selected',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              Gap(6.h),
+              Text(
+                'Please select an active table or order from the Orders list to proceed with settlement.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 13.sp,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              Gap(20.h),
+              ElevatedButton.icon(
+                onPressed: () => context.go(AppRoutes.orders),
+                icon: const Icon(Icons.arrow_back_rounded, size: 16),
+                label: const Text('Back to Orders'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10.r),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }

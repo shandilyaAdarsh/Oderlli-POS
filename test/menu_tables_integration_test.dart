@@ -153,16 +153,16 @@ void main() {
 
     // Verify menu items load
     expect(find.text('Bruschetta al Pomodoro'), findsOneWidget);
-    expect(find.text('Soup of the Day'), findsOneWidget);
+    expect(find.text('Caprese Salad'), findsOneWidget);
 
     // Verify search works
-    await tester.enterText(find.byType(TextField), 'Soup');
+    await tester.enterText(find.byType(TextField), 'Bruschetta');
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
-    // Bruschetta should not be visible now
-    expect(find.text('Bruschetta al Pomodoro'), findsNothing);
-    expect(find.text('Soup of the Day'), findsOneWidget);
+    // Caprese should not be visible now
+    expect(find.text('Caprese Salad'), findsNothing);
+    expect(find.text('Bruschetta al Pomodoro'), findsOneWidget);
   });
 
   testWidgets('Floor Screen integration test — tables statuses render correctly, no overflow',
@@ -206,13 +206,14 @@ void main() {
     // Let the FutureProvider and AsyncNotifier load and pump widgets
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump();
 
     // Verify mock tables render (e.g. Table 1, Table 2)
-    expect(find.text('TABLE 1'), findsOneWidget);
-    expect(find.text('TABLE 2'), findsOneWidget);
+    expect(find.text('Table 1'), findsOneWidget);
+    expect(find.text('Table 2'), findsOneWidget);
     
     // Status text matches label getters
-    expect(find.text('AVAILABLE'), findsWidgets);
-    expect(find.text('OCCUPIED'), findsWidgets);
+    expect(find.text('Available'), findsWidgets);
+    expect(find.text('Occupied'), findsWidgets);
   });
 }

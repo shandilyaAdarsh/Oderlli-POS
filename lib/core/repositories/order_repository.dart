@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
+import '../../constants/pos_constants.dart';
 import '../../models/models.dart';
 import '../../mock/restro_mock_data.dart';
 import '../constants/app_config.dart';
@@ -92,7 +93,7 @@ class OrderRepository {
   }
 
   Future<String> _getOrResolveSessionToken(String branchId, String tableId) async {
-    if (tableId == '00000000-0000-0000-0000-000000000001') {
+    if (PosConstants.isCounterTable(tableId)) {
       _tableSessionTokens[tableId] = 'counter-session-token';
       return 'counter-session-token';
     }

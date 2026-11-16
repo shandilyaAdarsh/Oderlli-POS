@@ -28,6 +28,13 @@ final activeTableOrderProvider = Provider<Order?>((ref) {
     }
   }
 
+  // Fallback: match any active order for this table
+  for (final o in orders) {
+    if (o.tableId == tableId) {
+      return o;
+    }
+  }
+
   return null;
 });
 
@@ -193,7 +200,7 @@ class ActiveBillNotifier extends StateNotifier<ActiveBillState?> {
       state = ActiveBillState(
         order: order,
         payments: const <PaymentRecord>[],
-        paymentsHydrated: false,
+        paymentsHydrated: true,
       );
     }
 
@@ -254,27 +261,30 @@ class ActiveBillNotifier extends StateNotifier<ActiveBillState?> {
       if (projections.isNotEmpty) {
         // Find if any bill contains our active order
         final proj = projections.firstWhere(
-          (p) => (p['orders'] as List<dynamic>).any((o) => o['id'] == currentState.order.id),
+          (p) => p is Map<String, dynamic> &&
+                 p['orders'] is List &&
+                 (p['orders'] as List<dynamic>).any((o) => o is Map && o['id'] == currentState.order.id),
           orElse: () => null,
         );
 
-        if (proj != null) {
+        if (proj != null && proj is Map<String, dynamic>) {
           final bill = proj['bill'];
           final settlements = proj['settlements'] as List<dynamic>? ?? [];
 
           final payments = settlements.map((s) {
+            final smap = s is Map<String, dynamic> ? s : <String, dynamic>{};
             return PaymentRecord(
-              id: s['id']?.toString() ?? '',
-              method: s['payment_method'] ?? 'cash',
-              amount: (s['amount_minor'] as int? ?? 0) / 100.0,
-              timestamp: DateTime.tryParse(s['created_at']?.toString() ?? '') ?? DateTime.now(),
+              id: smap['id']?.toString() ?? '',
+              method: smap['payment_method'] ?? 'cash',
+              amount: (smap['amount_minor'] as int? ?? 0) / 100.0,
+              timestamp: DateTime.tryParse(smap['created_at']?.toString() ?? '') ?? DateTime.now(),
               waiterName: currentState.order.servedBy ?? 'Staff',
-              amountMinor: s['amount_minor'] as int? ?? 0,
+              amountMinor: smap['amount_minor'] as int? ?? 0,
             );
           }).toList();
 
           state = state!.copyWith(
-            billId: bill['id'] as String?,
+            billId: bill is Map ? (bill['id'] as String?) : null,
             payments: payments,
             paymentsHydrated: true,
           );
@@ -292,7 +302,7 @@ class ActiveBillNotifier extends StateNotifier<ActiveBillState?> {
       }
       state = state!.copyWith(
         payments: const <PaymentRecord>[],
-        paymentsHydrated: false,
+        paymentsHydrated: true,
       );
     }
   }
@@ -358,30 +368,52 @@ class ActiveBillNotifier extends StateNotifier<ActiveBillState?> {
       String? targetBillId = currentState.billId;
 
       if (targetBillId == null) {
-        final billResult = await billingService.aggregateOrdersIntoBill(
-          tableId: currentState.order.tableId,
-          orderIds: [currentState.order.id],
-        );
-        targetBillId = billResult['id'] as String;
+        try {
+          final billResult = await billingService.aggregateOrdersIntoBill(
+            tableId: currentState.order.tableId,
+            orderIds: [currentState.order.id],
+          );
+          targetBillId = (billResult['id'] ?? billResult['bill_id'])?.toString();
+        } catch (e) {
+          if (e is DioException) {
+            rethrow;
+          }
+        }
       }
 
       final amountMinor = (amount * 100).round();
       String mappedMethod = method.toLowerCase();
       if (mappedMethod == 'upi') mappedMethod = 'qr_pay';
       
-      await billingService.settleBill(
-        billId: targetBillId,
-        paymentMethod: mappedMethod,
-        amountMinor: amountMinor,
-      );
+      final paymentId = 'pay-${DateTime.now().millisecondsSinceEpoch}';
+
+      if (targetBillId != null && targetBillId.isNotEmpty) {
+        await billingService.settleBill(
+          billId: targetBillId,
+          paymentMethod: mappedMethod,
+          amountMinor: amountMinor,
+        );
+      } else {
+        // Direct order payment persistence (/api/v1/orders/:id/payments)
+        final dioClient = _ref.read(dioClientProvider);
+        await dioClient.dio.post(
+          '/api/v1/orders/${currentState.order.id}/payments',
+          data: {
+            'method': mappedMethod,
+            'amount_minor': amountMinor,
+            'idempotency_key': paymentId,
+          },
+        );
+      }
 
       final newPayment = PaymentRecord(
-        id: 'pay-${DateTime.now().millisecondsSinceEpoch}',
+        id: paymentId,
         method: method,
         amount: amount,
         timestamp: DateTime.now(),
         waiterName: currentState.order.servedBy ?? (_ref.read(authProvider).user?.name ?? 'Staff'),
         amountMinor: amountMinor,
+        idempotencyKey: paymentId,
       );
       final updatedPayments = [...currentState.payments, newPayment];
       

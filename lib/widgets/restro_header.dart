@@ -6,9 +6,10 @@ import 'package:go_router/go_router.dart';
 
 import '../theme/theme.dart';
 import '../models/models.dart';
-import '../providers/auth_provider.dart';
 import '../providers/restro_pos_provider.dart';
 import '../routes/app_routes.dart';
+import '../providers/providers.dart';
+import 'restro_notifications_dialog.dart';
 
 class RestroHeader extends ConsumerWidget {
   const RestroHeader({super.key});
@@ -29,11 +30,17 @@ class RestroHeader extends ConsumerWidget {
     final searchController = TextEditingController(
       text: ref.watch(restroGlobalSearchProvider),
     );
+    final unreadCount = ref.watch(unreadNotificationsCountProvider);
 
     return Container(
       height: 72.h,
       padding: EdgeInsets.symmetric(horizontal: 24.w),
-      color: const Color(0xFF1A1A1A),
+      decoration: const BoxDecoration(
+        color: AppColors.sidebarBg,
+        border: Border(
+          bottom: BorderSide(color: AppColors.border, width: 1),
+        ),
+      ),
       child: Row(
         children: [
           // ── Brand Logo ──────────────────────────────────────────────────────
@@ -60,7 +67,7 @@ class RestroHeader extends ConsumerWidget {
                     ),
                     child: const Icon(
                       Icons.restaurant,
-                      color: Color(0xFF1F1F1F),
+                      color: AppColors.textOnWarning,
                       size: 22,
                     ),
                   ),
@@ -71,7 +78,7 @@ class RestroHeader extends ConsumerWidget {
                       fontFamily: 'Inter',
                       fontSize: 20.sp,
                       fontWeight: FontWeight.w700,
-                      color: const Color(0xFFF5F5F5),
+                      color: AppColors.textPrimary,
                       letterSpacing: 0.5,
                     ),
                   ),
@@ -83,64 +90,66 @@ class RestroHeader extends ConsumerWidget {
           const Spacer(),
 
           // ── Global Search Box ───────────────────────────────────────────────
-          Container(
-            width: 420.w,
-            height: 44.h,
-            padding: EdgeInsets.symmetric(horizontal: 16.w),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1F1F1F),
-              borderRadius: BorderRadius.circular(15.r),
-              border: Border.all(
-                color: const Color(0xFF2E2E2E),
-                width: 1,
+          Flexible(
+            child: Container(
+              constraints: BoxConstraints(maxWidth: 420.w),
+              height: 44.h,
+              padding: EdgeInsets.symmetric(horizontal: 16.w),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceVariant,
+                borderRadius: BorderRadius.circular(15.r),
+                border: Border.all(
+                  color: AppColors.border,
+                  width: 1,
+                ),
               ),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.search,
-                  color: Color(0xFFABABAB),
-                  size: 20,
-                ),
-                Gap(12.w),
-                Expanded(
-                  child: TextField(
-                    controller: searchController,
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 14.sp,
-                      color: const Color(0xFFF5F5F5),
-                    ),
-                    decoration: const InputDecoration(
-                      hintText: 'Search dishes, tables, or orders...',
-                      hintStyle: TextStyle(
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.search,
+                    color: AppColors.textSecondary,
+                    size: 20,
+                  ),
+                  Gap(12.w),
+                  Expanded(
+                    child: TextField(
+                      controller: searchController,
+                      style: TextStyle(
                         fontFamily: 'Inter',
-                        color: Color(0xFF757575),
+                        fontSize: 14.sp,
+                        color: AppColors.textPrimary,
                       ),
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      contentPadding: EdgeInsets.zero,
-                      filled: false,
-                    ),
-                    onChanged: (val) {
-                      ref.read(restroGlobalSearchProvider.notifier).state = val;
-                    },
-                  ),
-                ),
-                if (searchController.text.isNotEmpty)
-                  GestureDetector(
-                    onTap: () {
-                      searchController.clear();
-                      ref.read(restroGlobalSearchProvider.notifier).state = '';
-                    },
-                    child: const Icon(
-                      Icons.close,
-                      color: Color(0xFFABABAB),
-                      size: 16,
+                      decoration: const InputDecoration(
+                        hintText: 'Search dishes, tables, or orders...',
+                        hintStyle: TextStyle(
+                          fontFamily: 'Inter',
+                          color: AppColors.textTertiary,
+                        ),
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        contentPadding: EdgeInsets.zero,
+                        filled: false,
+                      ),
+                      onChanged: (val) {
+                        ref.read(restroGlobalSearchProvider.notifier).state = val;
+                      },
                     ),
                   ),
-              ],
+                  if (searchController.text.isNotEmpty)
+                    GestureDetector(
+                      onTap: () {
+                        searchController.clear();
+                        ref.read(restroGlobalSearchProvider.notifier).state = '';
+                      },
+                      child: const Icon(
+                        Icons.close,
+                        color: AppColors.textSecondary,
+                        size: 16,
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
 
@@ -150,66 +159,149 @@ class RestroHeader extends ConsumerWidget {
           Row(
             children: [
               // Dashboard Shortcut
-              InkWell(
-                onTap: () => context.go(AppRoutes.dashboard),
-                borderRadius: BorderRadius.circular(14.r),
-                child: Container(
-                  width: 44.r,
-                  height: 44.r,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1F1F1F),
-                    borderRadius: BorderRadius.circular(14.r),
-                  ),
-                  child: const Icon(
-                    Icons.dashboard_outlined,
-                    color: Color(0xFFF5F5F5),
-                    size: 22,
+              Tooltip(
+                message: 'Dashboard',
+                child: InkWell(
+                  onTap: () => context.go(AppRoutes.dashboard),
+                  borderRadius: BorderRadius.circular(14.r),
+                  child: Container(
+                    width: 44.r,
+                    height: 44.r,
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceVariant,
+                      borderRadius: BorderRadius.circular(14.r),
+                      border: Border.all(color: AppColors.border, width: 1),
+                    ),
+                    child: const Icon(
+                      Icons.dashboard_outlined,
+                      color: AppColors.textPrimary,
+                      size: 22,
+                    ),
                   ),
                 ),
               ),
 
               Gap(12.w),
 
-              // Notification Bell
-              InkWell(
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('All orders synced and up to date.'),
-                      backgroundColor: Color(0xFF262626),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                },
-                borderRadius: BorderRadius.circular(14.r),
-                child: Container(
-                  width: 44.r,
-                  height: 44.r,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1F1F1F),
-                    borderRadius: BorderRadius.circular(14.r),
-                  ),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      const Icon(
-                        Icons.notifications_none_outlined,
-                        color: Color(0xFFF5F5F5),
-                        size: 22,
-                      ),
-                      Positioned(
-                        top: 10.r,
-                        right: 10.r,
-                        child: Container(
-                          width: 8.r,
-                          height: 8.r,
-                          decoration: const BoxDecoration(
-                            color: AppColors.primary,
-                            shape: BoxShape.circle,
+              // Separate Refresh Button
+              Tooltip(
+                message: 'Refresh & Sync Data',
+                child: InkWell(
+                  onTap: () async {
+                    // Invalidate live data
+                    ref.invalidate(ordersProvider);
+                    ref.invalidate(posTablesProvider);
+                    ref.invalidate(menuItemsProvider);
+                    ref.invalidate(categoriesProvider);
+                    ref.invalidate(floorsProvider);
+                    ref.invalidate(sectionsProvider);
+
+                    final sessionIds = ref.read(cartSessionIdsProvider);
+                    final branchId = sessionIds.branchId;
+                    if (branchId != null) {
+                      await ref.read(ordersProvider.notifier).fetchOrders();
+                      ref.read(posTablesProvider.notifier).refreshTables();
+                    }
+
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).clearSnackBars();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Row(
+                            children: [
+                              const Icon(Icons.check_circle_rounded, color: AppColors.profit, size: 18),
+                              Gap(10.w),
+                              const Text(
+                                'Data refreshed & synced with TableOS backend.',
+                                style: TextStyle(
+                                  fontFamily: 'Inter',
+                                  color: AppColors.textOnDark,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
                           ),
+                          backgroundColor: AppColors.textPrimary,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+                          duration: const Duration(seconds: 2),
                         ),
-                      ),
-                    ],
+                      );
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(14.r),
+                  child: Container(
+                    width: 44.r,
+                    height: 44.r,
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceVariant,
+                      borderRadius: BorderRadius.circular(14.r),
+                      border: Border.all(color: AppColors.border, width: 1),
+                    ),
+                    child: const Icon(
+                      Icons.refresh_rounded,
+                      color: AppColors.textPrimary,
+                      size: 22,
+                    ),
+                  ),
+                ),
+              ),
+
+              Gap(12.w),
+
+              // Notification Bell (opens Notification Dialog)
+              Tooltip(
+                message: 'Notifications',
+                child: InkWell(
+                  onTap: () {
+                    RestroNotificationsDialog.show(context);
+                  },
+                  borderRadius: BorderRadius.circular(14.r),
+                  child: Container(
+                    width: 44.r,
+                    height: 44.r,
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceVariant,
+                      borderRadius: BorderRadius.circular(14.r),
+                      border: Border.all(color: AppColors.border, width: 1),
+                    ),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Icon(
+                          unreadCount > 0
+                              ? Icons.notifications_active_rounded
+                              : Icons.notifications_none_outlined,
+                          color: AppColors.textPrimary,
+                          size: 22,
+                        ),
+                        if (unreadCount > 0)
+                          Positioned(
+                            top: 8.r,
+                            right: 8.r,
+                            child: Container(
+                              padding: EdgeInsets.all(unreadCount > 9 ? 2.r : 4.r),
+                              constraints: BoxConstraints(minWidth: 16.r, minHeight: 16.r),
+                              decoration: const BoxDecoration(
+                                color: AppColors.primary,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  unreadCount > 9 ? '9+' : '$unreadCount',
+                                  style: TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 9.sp,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.textOnWarning,
+                                    height: 1.0,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -220,8 +312,9 @@ class RestroHeader extends ConsumerWidget {
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1F1F1F),
+                  color: AppColors.surfaceVariant,
                   borderRadius: BorderRadius.circular(30.r),
+                  border: Border.all(color: AppColors.border, width: 1),
                 ),
                 child: Row(
                   children: [
@@ -234,7 +327,7 @@ class RestroHeader extends ConsumerWidget {
                           fontFamily: 'Inter',
                           fontSize: 12.sp,
                           fontWeight: FontWeight.w700,
-                          color: const Color(0xFF1F1F1F),
+                          color: AppColors.textOnWarning,
                         ),
                       ),
                     ),
@@ -249,7 +342,7 @@ class RestroHeader extends ConsumerWidget {
                             fontFamily: 'Inter',
                             fontSize: 13.sp,
                             fontWeight: FontWeight.w600,
-                            color: const Color(0xFFF5F5F5),
+                            color: AppColors.textPrimary,
                           ),
                         ),
                         Text(
@@ -257,7 +350,7 @@ class RestroHeader extends ConsumerWidget {
                           style: TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 11.sp,
-                            color: const Color(0xFFABABAB),
+                            color: AppColors.textSecondary,
                           ),
                         ),
                       ],
@@ -266,7 +359,7 @@ class RestroHeader extends ConsumerWidget {
                     IconButton(
                       icon: const Icon(
                         Icons.logout,
-                        color: Color(0xFFABABAB),
+                        color: AppColors.textSecondary,
                         size: 20,
                       ),
                       tooltip: 'Logout',

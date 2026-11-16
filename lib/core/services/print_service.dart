@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/models.dart';
 import '../constants/app_config.dart';
@@ -22,13 +23,18 @@ abstract class PrintService {
 
 final printServiceProvider = Provider<PrintService>((ref) {
   final settings = ref.watch(posSettingsProvider);
-  final printerIp = settings.billingPrinterIp;
-  if (printerIp.isNotEmpty) {
+  final printerIp = settings.billingPrinterIp.trim();
+
+  // Network TCP printing requires a valid IP address and non-web environment
+  final isIpAddress = RegExp(r'^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$').hasMatch(printerIp);
+  if (!kIsWeb && isIpAddress) {
     return NetworkPrintService(printerIp: printerIp);
   }
-  if (AppConfig.printerIp.isNotEmpty) {
+
+  if (!kIsWeb && RegExp(r'^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$').hasMatch(AppConfig.printerIp)) {
     return NetworkPrintService(printerIp: AppConfig.printerIp);
   }
+
   return const MockPrintService();
 });
 
@@ -38,21 +44,19 @@ class MockPrintService implements PrintService {
 
   @override
   Future<void> printXReport(ShiftSession session) async {
-    await Future.delayed(const Duration(seconds: 1));
+    await Future.delayed(const Duration(milliseconds: 500));
+    debugPrint('[MockPrintService] Printed X-Report for session ${session.shiftId}');
   }
 
   @override
   Future<void> exportPdf(ShiftSession session) async {
-    await Future.delayed(const Duration(seconds: 1));
+    await Future.delayed(const Duration(milliseconds: 500));
+    debugPrint('[MockPrintService] Exported PDF for session ${session.shiftId}');
   }
 
   @override
   Future<void> printReceipt(ReceiptRequest request) async {
-    await Future.delayed(const Duration(milliseconds: 800));
-    assert(() {
-      // ignore: avoid_print
-      print(request.toReceiptText());
-      return true;
-    }());
+    await Future.delayed(const Duration(milliseconds: 600));
+    debugPrint('[MockPrintService] Successfully printed receipt for Order #${request.order.orderNumber ?? request.order.id} (Total: ₹${request.amountPaid})');
   }
 }

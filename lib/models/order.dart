@@ -30,7 +30,7 @@ OrderStatus parseOrderStatus(String statusStr) {
     'accepted' => OrderStatus.accepted,
     'preparing' => OrderStatus.preparing,
     'ready' => OrderStatus.ready,
-    'delivered' => OrderStatus.served,
+    'delivered' || 'served' => OrderStatus.served,
     'completed' => OrderStatus.completed,
     'cancelled' => OrderStatus.cancelled,
     'sync_conflict' => OrderStatus.syncConflict,
@@ -301,6 +301,7 @@ class OrderSummary {
   final DateTime createdAt;
   final String tableId;
   final String? orderNotes;
+  final String? customerName;
   final int grandTotalMinor;
   final String? customerPaymentIntent;
   final List<OrderSummaryItem> items;
@@ -312,6 +313,7 @@ class OrderSummary {
     required this.createdAt,
     required this.tableId,
     this.orderNotes,
+    this.customerName,
     this.grandTotalMinor = 0,
     this.customerPaymentIntent,
     this.items = const [],
@@ -320,6 +322,16 @@ class OrderSummary {
   double get total => grandTotalMinor / 100.0;
 
   factory OrderSummary.fromJson(Map<String, dynamic> json) {
+    final rawTotal = json['grand_total_minor'] ?? json['total_amount_minor'];
+    final totalMinor = (rawTotal as num?)?.toInt() ??
+        ((json['total_amount'] as num?) != null
+            ? ((json['total_amount'] as num) * 100).round()
+            : 0);
+
+    final rawItems = (json['items'] as List<dynamic>?) ??
+        (json['snapshot'] is Map ? (json['snapshot']['items'] as List<dynamic>?) : null) ??
+        [];
+
     return OrderSummary(
       id: (json['id'] ?? '') as String,
       orderNumber: (json['order_number'] ?? '') as String,
@@ -327,12 +339,12 @@ class OrderSummary {
       createdAt: DateTime.parse((json['created_at'] ?? DateTime.now().toIso8601String()) as String),
       tableId: (json['table_id'] ?? '') as String,
       orderNotes: json['order_notes'] as String?,
-      grandTotalMinor: (json['grand_total_minor'] as num?)?.toInt() ?? 0,
+      customerName: json['customer_name'] as String?,
+      grandTotalMinor: totalMinor,
       customerPaymentIntent: json['customer_payment_intent'] as String?,
-      items: (json['items'] as List<dynamic>?)
-              ?.map((e) => OrderSummaryItem.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [],
+      items: rawItems
+          .map((e) => OrderSummaryItem.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
   }
 }
@@ -340,16 +352,24 @@ class OrderSummary {
 class OrderSummaryItem {
   final String name;
   final int qty;
+  final int unitPriceMinor;
 
   const OrderSummaryItem({
     required this.name,
     required this.qty,
+    this.unitPriceMinor = 0,
   });
 
   factory OrderSummaryItem.fromJson(Map<String, dynamic> json) {
+    final priceMinor = (json['unit_price_minor'] as num?)?.toInt() ??
+        ((json['unit_price'] as num?) != null
+            ? ((json['unit_price'] as num) * 100).round()
+            : 0);
+
     return OrderSummaryItem(
-      name: (json['name'] ?? '') as String,
-      qty: (json['qty'] as num?)?.toInt() ?? 1,
+      name: (json['name'] ?? json['item_name_snapshot'] ?? '') as String,
+      qty: (json['qty'] as num?)?.toInt() ?? (json['quantity'] as num?)?.toInt() ?? 1,
+      unitPriceMinor: priceMinor,
     );
   }
 }

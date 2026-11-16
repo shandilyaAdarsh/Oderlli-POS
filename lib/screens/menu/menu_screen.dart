@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../theme/theme.dart';
 import '../../mock/restro_mock_data.dart';
+import '../../providers/menu_provider.dart';
 import '../../providers/customer_provider.dart';
 import '../../providers/restro_pos_provider.dart';
 import '../../routes/app_routes.dart';
@@ -21,8 +22,8 @@ class MenuScreen extends ConsumerStatefulWidget {
 }
 
 class _MenuScreenState extends ConsumerState<MenuScreen> {
-  int _selectedCategoryId = 1;
-  String _searchQuery = '';
+  int? _selectedCategoryId;
+  final String _searchQuery = '';
   final _searchCtrl = TextEditingController();
 
   @override
@@ -90,9 +91,9 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
         paymentMethod: paymentMethod,
         onPrint: () {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Receipt sent to thermal POS printer.'),
-              backgroundColor: Color(0xFF262626),
+            SnackBar(
+              content: const Text('Receipt sent to thermal POS printer.'),
+              backgroundColor: AppColors.textPrimary,
             ),
           );
         },
@@ -113,19 +114,70 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
     final total = ref.watch(restroCartTotalProvider);
     final paymentMethod = ref.watch(restroPaymentMethodProvider);
 
-    final categories = RestroMockData.categories;
+    final categoriesAsync = ref.watch(categoriesProvider);
+    final menuItemsAsync = ref.watch(menuItemsProvider);
+
+    final rawCategories = categoriesAsync.valueOrNull ?? [];
+    final rawMenuItems = menuItemsAsync.valueOrNull ?? [];
+
+    final List<RestroCategory> categories;
+    if (rawMenuItems.isNotEmpty) {
+      final allDishes = rawMenuItems.map((i) {
+        final cat = rawCategories.where((c) => c.id == i.categoryId).firstOrNull;
+        return RestroMenuItem(
+          id: i.id.hashCode,
+          name: i.name,
+          price: i.price,
+          category: cat?.name ?? 'Main',
+          isVeg: i.isVegetarian,
+          emoji: cat?.icon ?? '🍽️',
+        );
+      }).toList();
+
+      final categoryList = rawCategories
+          .map((c) {
+            final items = allDishes.where((i) => i.category == c.name).toList();
+            return RestroCategory(
+              id: c.id.hashCode,
+              name: c.name,
+              bgColor: AppColors.surfaceVariant,
+              icon: c.icon,
+              items: items,
+            );
+          })
+          .where((c) => c.items.isNotEmpty)
+          .toList();
+
+      categories = [
+        RestroCategory(
+          id: 0,
+          name: 'All Dishes',
+          bgColor: AppColors.surfaceVariant,
+          icon: '🍽️',
+          items: allDishes,
+        ),
+        ...categoryList,
+      ];
+    } else {
+      categories = RestroMockData.categories;
+    }
+
+    final activeCatId = _selectedCategoryId ?? categories.first.id;
     final currentCategory = categories.firstWhere(
-      (c) => c.id == _selectedCategoryId,
+      (c) => c.id == activeCatId,
       orElse: () => categories.first,
     );
 
+    final globalSearch = ref.watch(restroGlobalSearchProvider);
+    final effectiveQuery = globalSearch.isNotEmpty ? globalSearch : _searchQuery;
+
     final allItems = currentCategory.items.where((item) {
-      if (_searchQuery.isEmpty) return true;
-      return item.name.toLowerCase().contains(_searchQuery.toLowerCase());
+      if (effectiveQuery.isEmpty) return true;
+      return item.name.toLowerCase().contains(effectiveQuery.toLowerCase());
     }).toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFF1F1F1F),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -156,12 +208,12 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                                     child: Container(
                                       padding: EdgeInsets.all(8.r),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFF262626),
+                                        color: AppColors.surfaceVariant,
                                         borderRadius: BorderRadius.circular(10.r),
                                       ),
-                                      child: const Icon(
+                                      child: Icon(
                                         Icons.arrow_back_ios_new,
-                                        color: Color(0xFFF5F5F5),
+                                        color: AppColors.textPrimary,
                                         size: 18,
                                       ),
                                     ),
@@ -173,7 +225,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                                       fontFamily: 'Inter',
                                       fontSize: 22.sp,
                                       fontWeight: FontWeight.w700,
-                                      color: const Color(0xFFF5F5F5),
+                                      color: AppColors.textPrimary,
                                       letterSpacing: 0.5,
                                     ),
                                   ),
@@ -184,9 +236,9 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                               Container(
                                 padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF262626),
+                                  color: AppColors.surface,
                                   borderRadius: BorderRadius.circular(30.r),
-                                  border: Border.all(color: const Color(0xFF383838)),
+                                  border: Border.all(color: AppColors.border),
                                 ),
                                 child: Row(
                                   children: [
@@ -204,7 +256,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                                         fontFamily: 'Inter',
                                         fontSize: 13.sp,
                                         fontWeight: FontWeight.w600,
-                                        color: const Color(0xFFF5F5F5),
+                                        color: AppColors.textPrimary,
                                       ),
                                     ),
                                     Gap(12.w),
@@ -238,10 +290,10 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                             padding: EdgeInsets.symmetric(horizontal: 24.w),
                             scrollDirection: Axis.horizontal,
                             itemCount: categories.length,
-                            separatorBuilder: (_, __) => Gap(12.w),
+                            separatorBuilder: (_, _) => Gap(12.w),
                             itemBuilder: (context, i) {
                               final cat = categories[i];
-                              final isSelected = cat.id == _selectedCategoryId;
+                              final isSelected = cat.id == activeCatId;
 
                               return InkWell(
                                 onTap: () => setState(() => _selectedCategoryId = cat.id),
@@ -250,17 +302,17 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                                   duration: const Duration(milliseconds: 150),
                                   padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 10.h),
                                   decoration: BoxDecoration(
-                                    color: isSelected ? cat.bgColor : const Color(0xFF262626),
+                                    color: isSelected ? AppColors.sidebarActiveBg : AppColors.surface,
                                     borderRadius: BorderRadius.circular(14.r),
                                     border: Border.all(
-                                      color: isSelected ? Colors.transparent : const Color(0xFF383838),
+                                      color: isSelected ? AppColors.primary : AppColors.border,
                                     ),
                                     boxShadow: [
                                       if (isSelected)
                                         BoxShadow(
-                                          color: cat.bgColor.withValues(alpha: 0.4),
-                                          blurRadius: 10,
-                                          offset: const Offset(0, 3),
+                                          color: AppColors.primary.withValues(alpha: 0.2),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
                                         ),
                                     ],
                                   ),
@@ -274,7 +326,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                                           fontFamily: 'Inter',
                                           fontSize: 13.sp,
                                           fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                          color: const Color(0xFFF5F5F5),
+                                          color: isSelected ? AppColors.sidebarActive : AppColors.textSecondary,
                                         ),
                                       ),
                                     ],
@@ -291,20 +343,24 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                         Expanded(
                           child: Padding(
                             padding: EdgeInsets.symmetric(horizontal: 24.w),
-                            child: allItems.isEmpty
+                            child: (categoriesAsync.isLoading || menuItemsAsync.isLoading)
                                 ? const Center(
-                                    child: Text(
-                                      'No dishes found in this category.',
-                                      style: TextStyle(color: Color(0xFFABABAB)),
-                                    ),
+                                    child: CircularProgressIndicator(color: AppColors.primary),
                                   )
-                                : GridView.builder(
+                                : allItems.isEmpty
+                                    ? Center(
+                                        child: Text(
+                                          'No dishes found in ${currentCategory.name}.',
+                                          style: TextStyle(color: AppColors.textSecondary),
+                                        ),
+                                      )
+                                    : GridView.builder(
                                     padding: EdgeInsets.only(bottom: 24.h),
                                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                                       crossAxisCount: 3,
                                       crossAxisSpacing: 16.w,
                                       mainAxisSpacing: 16.h,
-                                      childAspectRatio: 1.35,
+                                      childAspectRatio: 1.3,
                                     ),
                                     itemCount: allItems.length,
                                     itemBuilder: (context, i) {
@@ -324,9 +380,9 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                     child: Container(
                       margin: EdgeInsets.fromLTRB(0, 12.h, 24.w, 12.h),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1A1A1A),
+                        color: AppColors.surface,
                         borderRadius: BorderRadius.circular(16.r),
-                        border: Border.all(color: const Color(0xFF2E2E2E)),
+                        border: Border.all(color: AppColors.border),
                       ),
                       padding: EdgeInsets.all(20.r),
                       child: Column(
@@ -335,7 +391,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                           // Customer Info Section (CustomerInfo.jsx)
                           _buildCustomerInfoSection(customer),
 
-                          const Divider(color: Color(0xFF2E2E2E), thickness: 1),
+                          Divider(color: AppColors.border, thickness: 1),
                           Gap(8.h),
 
                           // Cart Items Header
@@ -348,7 +404,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                                   fontFamily: 'Inter',
                                   fontSize: 15.sp,
                                   fontWeight: FontWeight.w700,
-                                  color: const Color(0xFFF5F5F5),
+                                  color: AppColors.textPrimary,
                                 ),
                               ),
                               if (cartItems.isNotEmpty)
@@ -374,7 +430,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                                         Icon(
                                           Icons.shopping_bag_outlined,
                                           size: 40.sp,
-                                          color: const Color(0xFF555555),
+                                          color: AppColors.textTertiary,
                                         ),
                                         Gap(8.h),
                                         Text(
@@ -382,7 +438,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                                           style: TextStyle(
                                             fontFamily: 'Inter',
                                             fontSize: 13.sp,
-                                            color: const Color(0xFF888888),
+                                            color: AppColors.textSecondary,
                                           ),
                                         ),
                                       ],
@@ -390,7 +446,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                                   )
                                 : ListView.separated(
                                     itemCount: cartItems.length,
-                                    separatorBuilder: (_, __) => Gap(10.h),
+                                    separatorBuilder: (_, _) => Gap(10.h),
                                     itemBuilder: (context, i) {
                                       final line = cartItems[i];
                                       return _buildCartItemTile(line);
@@ -398,7 +454,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                                   ),
                           ),
 
-                          const Divider(color: Color(0xFF2E2E2E), thickness: 1),
+                          Divider(color: AppColors.border, thickness: 1),
                           Gap(10.h),
 
                           // Bill Summary & Taxes (Bill.jsx)
@@ -426,26 +482,29 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                               ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.primary,
-                                foregroundColor: const Color(0xFF1F1F1F),
+                                foregroundColor: Colors.white,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12.r),
                                 ),
                                 elevation: 0,
                               ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(Icons.check_circle_outline, size: 20),
-                                  Gap(8.w),
-                                  Text(
-                                    'Place Order & Print Bill',
-                                    style: TextStyle(
-                                      fontFamily: 'Inter',
-                                      fontSize: 15.sp,
-                                      fontWeight: FontWeight.w700,
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.check_circle_outline, size: 20),
+                                    Gap(8.w),
+                                    Text(
+                                      'Place Order & Print Bill',
+                                      style: TextStyle(
+                                        fontFamily: 'Inter',
+                                        fontSize: 15.sp,
+                                        fontWeight: FontWeight.w700,
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
                           ),
@@ -472,144 +531,162 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
     final quantity = existingLine?.quantity ?? 0;
 
     return Container(
-      padding: EdgeInsets.all(14.r),
+      padding: EdgeInsets.all(10.r),
       decoration: BoxDecoration(
-        color: const Color(0xFF262626),
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(14.r),
         border: Border.all(
-          color: quantity > 0 ? AppColors.primary : const Color(0xFF383838),
+          color: quantity > 0 ? AppColors.primary : AppColors.border,
           width: quantity > 0 ? 1.5 : 1.0,
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerLeft,
+        child: SizedBox(
+          width: 190,
+          height: 125,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                width: 38.r,
-                height: 38.r,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1F1F1F),
-                  borderRadius: BorderRadius.circular(10.r),
-                ),
-                child: Center(
-                  child: Text(item.emoji, style: TextStyle(fontSize: 20.sp)),
-                ),
-              ),
-              // Veg / Non-Veg Indicator
-              Container(
-                width: 16.r,
-                height: 16.r,
-                padding: EdgeInsets.all(3.r),
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: item.isVeg ? const Color(0xFF22C55E) : const Color(0xFFEF4444),
-                    width: 1.5,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceElevated,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Center(
+                      child: Text(item.emoji, style: const TextStyle(fontSize: 20)),
+                    ),
                   ),
-                  borderRadius: BorderRadius.circular(4.r),
-                ),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: item.isVeg ? const Color(0xFF22C55E) : const Color(0xFFEF4444),
-                    shape: BoxShape.circle,
+                  // Veg / Non-Veg Indicator
+                  Container(
+                    width: 16,
+                    height: 16,
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: item.isVeg ? const Color(0xFF22C55E) : const Color(0xFFEF4444),
+                        width: 1.5,
+                      ),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: item.isVeg ? const Color(0xFF22C55E) : const Color(0xFFEF4444),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
-            ],
-          ),
 
-          Gap(6.h),
-
-          Text(
-            item.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 14.sp,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFFF5F5F5),
-            ),
-          ),
-
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
               Text(
-                '₹${item.price.toStringAsFixed(0)}',
+                item.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontFamily: 'Inter',
-                  fontSize: 16.sp,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.primary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
                 ),
               ),
-              if (quantity == 0)
-                ElevatedButton(
-                  onPressed: () => ref.read(restroCartProvider.notifier).addItem(item),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1F1F1F),
-                    foregroundColor: AppColors.primary,
-                    side: const BorderSide(color: AppColors.primary),
-                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8.r),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: Text(
-                    'Add',
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                )
-              else
-                Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1F1F1F),
-                    borderRadius: BorderRadius.circular(8.r),
-                    border: Border.all(color: AppColors.primary),
-                  ),
-                  child: Row(
-                    children: [
-                      InkWell(
-                        onTap: () => ref.read(restroCartProvider.notifier).decrement(item.id),
-                        child: const Padding(
-                          padding: EdgeInsets.all(4.0),
-                          child: Icon(Icons.remove, size: 14, color: AppColors.primary),
-                        ),
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Flexible(
+                    child: Text(
+                      '₹${item.price.toStringAsFixed(0)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primary,
                       ),
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 8.w),
-                        child: Text(
-                          '$quantity',
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  if (quantity == 0)
+                    SizedBox(
+                      height: 32,
+                      child: ElevatedButton(
+                        onPressed: () => ref.read(restroCartProvider.notifier).addItem(item),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.surfaceElevated,
+                          foregroundColor: AppColors.primary,
+                          side: const BorderSide(color: AppColors.primary),
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          'Add',
                           style: TextStyle(
                             fontFamily: 'Inter',
-                            fontSize: 13.sp,
-                            fontWeight: FontWeight.w800,
-                            color: const Color(0xFFF5F5F5),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),
-                      InkWell(
-                        onTap: () => ref.read(restroCartProvider.notifier).increment(item.id),
-                        child: const Padding(
-                          padding: EdgeInsets.all(4.0),
-                          child: Icon(Icons.add, size: 14, color: AppColors.primary),
-                        ),
+                    )
+                  else
+                    Container(
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceElevated,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.primary),
                       ),
-                    ],
-                  ),
-                ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          InkWell(
+                            onTap: () => ref.read(restroCartProvider.notifier).decrement(item.id),
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              child: Icon(Icons.remove, size: 14, color: AppColors.primary),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: Text(
+                              '$quantity',
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                          InkWell(
+                            onTap: () => ref.read(restroCartProvider.notifier).increment(item.id),
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              child: Icon(Icons.add, size: 14, color: AppColors.primary),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -620,46 +697,54 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
     return Container(
       padding: EdgeInsets.all(12.r),
       decoration: BoxDecoration(
-        color: const Color(0xFF1F1F1F),
+        color: AppColors.surfaceVariant,
         borderRadius: BorderRadius.circular(12.r),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 18.r,
-                backgroundColor: AppColors.primary,
-                child: Text(
-                  customer.name?.isNotEmpty == true ? customer.name![0].toUpperCase() : 'G',
-                  style: const TextStyle(color: Color(0xFF1F1F1F), fontWeight: FontWeight.bold),
+          Expanded(
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 18.r,
+                  backgroundColor: AppColors.primary,
+                  child: Text(
+                    customer.name?.isNotEmpty == true ? customer.name![0].toUpperCase() : 'G',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
                 ),
-              ),
-              Gap(10.w),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    customer.name?.isNotEmpty == true ? customer.name! : 'Guest Order',
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFFF5F5F5),
-                    ),
+                Gap(10.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        customer.name?.isNotEmpty == true ? customer.name! : 'Guest Order',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      Text(
+                        'Table ${customer.tableNo ?? "Counter"} • ${customer.guests} Person',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 11.sp,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
                   ),
-                  Text(
-                    'Table ${customer.tableNo ?? "Counter"} • ${customer.guests} Person',
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 11.sp,
-                      color: const Color(0xFFABABAB),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
           IconButton(
             onPressed: () => context.go(AppRoutes.floor),
@@ -677,7 +762,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
       decoration: BoxDecoration(
-        color: const Color(0xFF1F1F1F),
+        color: AppColors.surfaceVariant,
         borderRadius: BorderRadius.circular(10.r),
       ),
       child: Row(
@@ -694,7 +779,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                     fontFamily: 'Inter',
                     fontSize: 13.sp,
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFFF5F5F5),
+                    color: AppColors.textPrimary,
                   ),
                 ),
                 Text(
@@ -702,7 +787,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                   style: TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 11.sp,
-                    color: const Color(0xFFABABAB),
+                    color: AppColors.textSecondary,
                   ),
                 ),
               ],
@@ -716,7 +801,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF262626),
+                    color: AppColors.surface,
                     borderRadius: BorderRadius.circular(6.r),
                   ),
                   child: const Icon(Icons.remove, size: 14, color: AppColors.primary),
@@ -730,7 +815,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                     fontFamily: 'Inter',
                     fontSize: 13.sp,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFFF5F5F5),
+                    color: AppColors.textPrimary,
                   ),
                 ),
               ),
@@ -739,7 +824,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF262626),
+                    color: AppColors.surface,
                     borderRadius: BorderRadius.circular(6.r),
                   ),
                   child: const Icon(Icons.add, size: 14, color: AppColors.primary),
@@ -754,7 +839,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
               fontFamily: 'Inter',
               fontSize: 13.sp,
               fontWeight: FontWeight.w700,
-              color: const Color(0xFFF5F5F5),
+              color: AppColors.textPrimary,
             ),
           ),
           IconButton(
@@ -774,23 +859,30 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('Subtotal', style: TextStyle(color: const Color(0xFFABABAB), fontSize: 13.sp)),
-            Text('₹${subtotal.toStringAsFixed(2)}', style: TextStyle(color: const Color(0xFFF5F5F5), fontSize: 13.sp, fontWeight: FontWeight.w600)),
+            Text('Subtotal', style: TextStyle(color: AppColors.textSecondary, fontSize: 13.sp)),
+            Text('₹${subtotal.toStringAsFixed(2)}', style: TextStyle(color: AppColors.textPrimary, fontSize: 13.sp, fontWeight: FontWeight.w600)),
           ],
         ),
         Gap(4.h),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('Tax (CGST 2.5% + SGST 2.5%)', style: TextStyle(color: const Color(0xFFABABAB), fontSize: 12.sp)),
-            Text('₹${tax.toStringAsFixed(2)}', style: TextStyle(color: const Color(0xFFF5F5F5), fontSize: 12.sp)),
+            Expanded(
+              child: Text(
+                'Tax (5%)',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12.sp),
+              ),
+            ),
+            Text('₹${tax.toStringAsFixed(2)}', style: TextStyle(color: AppColors.textPrimary, fontSize: 12.sp)),
           ],
         ),
         Gap(8.h),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('Total Amount', style: TextStyle(color: const Color(0xFFF5F5F5), fontSize: 16.sp, fontWeight: FontWeight.w700)),
+            Text('Total Amount', style: TextStyle(color: AppColors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w700)),
             Text('₹${total.toStringAsFixed(2)}', style: TextStyle(color: AppColors.primary, fontSize: 18.sp, fontWeight: FontWeight.w800)),
           ],
         ),
@@ -816,10 +908,10 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                 duration: const Duration(milliseconds: 150),
                 padding: EdgeInsets.symmetric(vertical: 8.h),
                 decoration: BoxDecoration(
-                  color: isSelected ? AppColors.primary : const Color(0xFF1F1F1F),
+                  color: isSelected ? AppColors.primary : AppColors.surfaceVariant,
                   borderRadius: BorderRadius.circular(8.r),
                   border: Border.all(
-                    color: isSelected ? AppColors.primary : const Color(0xFF383838),
+                    color: isSelected ? AppColors.primary : AppColors.border,
                   ),
                 ),
                 child: Center(
@@ -829,7 +921,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                       fontFamily: 'Inter',
                       fontSize: 11.sp,
                       fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                      color: isSelected ? const Color(0xFF1F1F1F) : const Color(0xFFABABAB),
+                      color: isSelected ? Colors.white : AppColors.textSecondary,
                     ),
                   ),
                 ),

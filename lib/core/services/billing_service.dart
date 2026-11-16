@@ -8,9 +8,25 @@ class BillingService {
 
   /// GET /api/v1/billing/projections/table/:tableId
   Future<List<dynamic>> fetchTableProjection(String tableId) async {
-    final response = await _dioClient.dio.get('/api/v1/billing/projections/table/$tableId');
+    final response = await _dioClient.dio.get(
+      '/api/v1/billing/projections/table/$tableId',
+      options: Options(
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+        },
+      ),
+    );
     _assertSuccess(response);
-    return response.data['data']['projections'] as List<dynamic>;
+    if (response.data == null) return const [];
+    final data = response.data is Map ? response.data['data'] : null;
+    if (data is Map<String, dynamic> && data['projections'] is List) {
+      return data['projections'] as List<dynamic>;
+    }
+    if (data is List) {
+      return data;
+    }
+    return const [];
   }
 
   /// POST /api/v1/billing/bills/aggregate
@@ -27,14 +43,28 @@ class BillingService {
       },
     );
     _assertSuccess(response);
-    return response.data['data']['bill'] as Map<String, dynamic>;
+    final data = response.data['data'];
+    if (data is Map<String, dynamic>) {
+      if (data['bill'] is Map<String, dynamic>) {
+        return data['bill'] as Map<String, dynamic>;
+      }
+      return data;
+    }
+    return const <String, dynamic>{};
   }
 
   /// GET /api/v1/billing/bills/:id
   Future<Map<String, dynamic>> getBillDetails(String billId) async {
     final response = await _dioClient.dio.get('/api/v1/billing/bills/$billId');
     _assertSuccess(response);
-    return response.data['data']['bill'] as Map<String, dynamic>;
+    final data = response.data['data'];
+    if (data is Map<String, dynamic>) {
+      if (data['bill'] is Map<String, dynamic>) {
+        return data['bill'] as Map<String, dynamic>;
+      }
+      return data;
+    }
+    return const <String, dynamic>{};
   }
 
   /// POST /api/v1/billing/bills/:id/settle
@@ -51,7 +81,14 @@ class BillingService {
       },
     );
     _assertSuccess(response);
-    return response.data['data']['updatedBill'] as Map<String, dynamic>;
+    final data = response.data['data'];
+    if (data is Map<String, dynamic>) {
+      if (data['updatedBill'] is Map<String, dynamic>) {
+        return data['updatedBill'] as Map<String, dynamic>;
+      }
+      return data;
+    }
+    return const <String, dynamic>{};
   }
 
   void _assertSuccess(Response<dynamic> response) {

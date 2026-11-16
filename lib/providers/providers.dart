@@ -11,4 +11,5 @@ export 'greeting_provider.dart';
 export '../features/kitchen/providers/kitchen_provider.dart';
 export 'payment_ledger_provider.dart';
 export 'settings_provider.dart';
+export 'pos_notification_provider.dart';
 

@@ -8,7 +8,6 @@ import 'package:go_router/go_router.dart';
 import '../../routes/app_routes.dart';
 import '../../theme/theme.dart';
 import '../../providers/auth_provider.dart';
-
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -63,19 +62,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _emailCtrl.text = email;
       _passwordCtrl.text = 'Test@123456';
     });
-    final name = label.contains('(') ? label.split('(').first.trim() : label;
-    _handleQuickDemoLogin(userName: name);
+    _handleLogin();
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = true;
     const brandGold = AppColors.primary;
     final authState = ref.watch(authProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF1F1F1F),
+      backgroundColor: AppColors.background,
       body: Stack(
         children: [
           // Ambient Glow Background
@@ -117,7 +113,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               color: brandGold,
                               borderRadius: BorderRadius.circular(12.r),
                             ),
-                            child: const Icon(Icons.restaurant, color: Color(0xFF1F1F1F), size: 28),
+                            child: const Icon(Icons.restaurant, color: Colors.white, size: 28),
                           ),
                           const SizedBox(width: 12),
                           Text(
@@ -127,7 +123,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               fontSize: 28.sp,
                               fontWeight: FontWeight.w800,
                               letterSpacing: -0.5,
-                              color: const Color(0xFFF5F5F5),
+                              color: AppColors.textPrimary,
                             ),
                           ),
                           Text(
@@ -149,7 +145,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           fontFamily: 'Inter',
                           fontSize: 24.sp,
                           fontWeight: FontWeight.w700,
-                          color: const Color(0xFFF5F5F5),
+                          color: AppColors.textPrimary,
                         ),
                       ),
                       Gap(8.h),
@@ -158,7 +154,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         style: TextStyle(
                           fontFamily: 'Inter',
                           fontSize: 13.sp,
-                          color: const Color(0xFFABABAB),
+                          color: AppColors.textSecondary,
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -169,12 +165,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       Container(
                         padding: EdgeInsets.all(24.r),
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF232627) : Colors.white,
+                          color: AppColors.surface,
                           borderRadius: BorderRadius.circular(20.r),
-                          border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE1E3E4)),
+                          border: Border.all(color: AppColors.border),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+                              color: Colors.black.withValues(alpha: 0.05),
                               blurRadius: 20,
                               offset: const Offset(0, 8),
                             ),
@@ -191,7 +187,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 style: TextStyle(fontFamily: 'PlusJakartaSans',
                                   fontSize: 13.sp,
                                   fontWeight: FontWeight.w600,
-                                  color: isDark ? Colors.white70 : Colors.black87,
+                                  color: AppColors.textSecondary,
                                 ),
                               ),
                               Gap(8.h),
@@ -199,11 +195,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 controller: _emailCtrl,
                                 keyboardType: TextInputType.emailAddress,
                                 textInputAction: TextInputAction.next,
-                                style: TextStyle(fontFamily: 'PlusJakartaSans',fontSize: 14.sp),
+                                style: TextStyle(fontFamily: 'PlusJakartaSans', fontSize: 14.sp, color: AppColors.textPrimary),
                                 decoration: InputDecoration(
                                   hintText: 'name@organization.com',
-                                  prefixIcon: const Icon(Icons.email_outlined),
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
+                                  hintStyle: TextStyle(color: AppColors.textTertiary),
+                                  prefixIcon: Icon(Icons.email_outlined, color: AppColors.textSecondary),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r), borderSide: BorderSide(color: AppColors.border)),
+                                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r), borderSide: BorderSide(color: AppColors.border)),
                                   contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
                                 ),
                                 validator: (value) {
@@ -224,7 +222,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 style: TextStyle(fontFamily: 'PlusJakartaSans',
                                   fontSize: 13.sp,
                                   fontWeight: FontWeight.w600,
-                                  color: isDark ? Colors.white70 : Colors.black87,
+                                  color: AppColors.textSecondary,
                                 ),
                               ),
                               Gap(8.h),
@@ -232,18 +230,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 controller: _passwordCtrl,
                                 obscureText: !_isPasswordVisible,
                                 textInputAction: TextInputAction.done,
-                                style: TextStyle(fontFamily: 'PlusJakartaSans',fontSize: 14.sp),
+                                style: TextStyle(fontFamily: 'PlusJakartaSans', fontSize: 14.sp, color: AppColors.textPrimary),
                                 onFieldSubmitted: (_) => _handleLogin(),
                                 decoration: InputDecoration(
                                   hintText: '••••••••',
-                                  prefixIcon: const Icon(Icons.lock_outline_rounded),
+                                  hintStyle: TextStyle(color: AppColors.textTertiary),
+                                  prefixIcon: Icon(Icons.lock_outline_rounded, color: AppColors.textSecondary),
                                   suffixIcon: IconButton(
                                     icon: Icon(
                                       _isPasswordVisible ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                                      color: AppColors.textSecondary,
                                     ),
                                     onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
                                   ),
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r), borderSide: BorderSide(color: AppColors.border)),
+                                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r), borderSide: BorderSide(color: AppColors.border)),
                                   contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
                                 ),
                                 validator: (value) {
@@ -263,11 +264,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       ),
                                     )
                                   : SizedBox(
-                                                                           child: FilledButton(
+                                      child: FilledButton(
                                         onPressed: _handleLogin,
                                         style: FilledButton.styleFrom(
                                           backgroundColor: brandGold,
-                                          foregroundColor: const Color(0xFF1F1F1F),
+                                          foregroundColor: Colors.white,
                                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
                                         ),
                                         child: Text(
@@ -309,9 +310,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         Container(
                           padding: EdgeInsets.all(16.r),
                           decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF1E2122) : const Color(0xFFF1F3F4),
+                            color: const Color(0xFF1E2122),
                             borderRadius: BorderRadius.circular(16.r),
-                            border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE1E3E4)),
+                            border: Border.all(color: Colors.white10),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -328,28 +329,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ),
                               Gap(12.h),
                               _buildDemoAccountButton(
-                                'Amrit Maurya (Manager)',
-                                'royaltandoor.owner@test.com',
-                                isDark,
+                                'Test Cafe Owner (Admin)',
+                                'testcafe.owner@test.com',
                               ),
                               Gap(8.h),
                               _buildDemoAccountButton(
-                                'Priya Sharma (Cashier)',
-                                'testcafe.owner@test.com',
-                                isDark,
+                                'Royal Tandoor Owner (Admin)',
+                                'royaltandoor.owner@test.com',
                               ),
                               Gap(8.h),
                               _buildDemoAccountButton(
                                 'Rahul Verma (Server)',
                                 'oceanbite.owner@test.com',
-                                isDark,
                               ),
                               Gap(10.h),
                               Text(
                                 'Click any profile above to instantly sign in',
                                 style: TextStyle(fontFamily: 'PlusJakartaSans',
                                   fontSize: 11.sp,
-                                  color: isDark ? Colors.white54 : Colors.black54,
+                                  color: Colors.white54,
                                 ),
                                 textAlign: TextAlign.center,
                               ),
@@ -368,13 +366,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  Widget _buildDemoAccountButton(String label, String email, bool isDark) {
+  Widget _buildDemoAccountButton(String label, String email) {
     return SizedBox(
       height: 38.h,
       child: OutlinedButton(
         onPressed: () => _fillDemoCredentials(label, email),
         style: OutlinedButton.styleFrom(
-          side: BorderSide(color: isDark ? Colors.white24 : Colors.black12),
+          side: const BorderSide(color: Colors.white24),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
         ),
         child: Row(
@@ -385,7 +383,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               style: TextStyle(fontFamily: 'PlusJakartaSans',
                 fontSize: 12.sp,
                 fontWeight: FontWeight.w600,
-                color: isDark ? Colors.white70 : Colors.black87,
+                color: Colors.white70,
               ),
             ),
             Icon(Icons.arrow_forward_rounded, size: 14.sp),

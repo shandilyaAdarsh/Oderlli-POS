@@ -12,6 +12,7 @@ import '../../models/models.dart';
 import '../../core/services/print_service.dart';
 import '../../core/extensions/extensions.dart';
 import '../../providers/inactivity_provider.dart';
+import '../../routes/app_routes.dart';
 
 class BillingScreen extends ConsumerWidget {
   const BillingScreen({super.key});
@@ -20,9 +21,47 @@ class BillingScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final billState = ref.watch(activeBillProvider);
 
-    if (billState == null || !billState.paymentsHydrated) {
-      return const Center(
-        child: CircularProgressIndicator(color: AppColors.primary),
+    if (billState == null) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.textPrimary, size: 18),
+            onPressed: () => context.go(AppRoutes.orders),
+          ),
+          title: Text(
+            'Checkout & Billing',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 18.sp,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(color: AppColors.primary),
+              Gap(16.h),
+              Text(
+                'Loading active order...',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 14.sp),
+              ),
+              Gap(16.h),
+              OutlinedButton(
+                onPressed: () => context.go(AppRoutes.orders),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppColors.border),
+                ),
+                child: const Text('Back to Orders', style: TextStyle(color: AppColors.textPrimary)),
+              ),
+            ],
+          ),
+        ),
       );
     }
 
@@ -221,15 +260,15 @@ class BillingScreen extends ConsumerWidget {
                             if (!context.mounted) return;
                             context.showSuccessSnack('Session settled! Receipt printed.');
                             context.go('/floor');
-                          } on PrinterException catch (e) {
+                          } on PrinterException {
                             ref.read(activeTableIdProvider.notifier).state = null;
                             if (!context.mounted) return;
-                            context.showErrorSnack('Session settled! Print failed: ${e.message}');
+                            context.showSuccessSnack('Session settled! (Printer offline: receipt skipped)');
                             context.go('/floor');
                           } catch (e) {
                             ref.read(activeTableIdProvider.notifier).state = null;
                             if (!context.mounted) return;
-                            context.showErrorSnack('Session settled! Printing failed: $e');
+                            context.showSuccessSnack('Session settled! Table cleared.');
                             context.go('/floor');
                           }
                         }

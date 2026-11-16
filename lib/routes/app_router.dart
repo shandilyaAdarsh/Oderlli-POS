@@ -103,7 +103,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         }
       }
 
-      // 4. Payment Checkout Shell: Manager and Cashiers (Server Blocked)
+      // 4. Payment Checkout Shell: All Authenticated POS Staff
       if (path.startsWith('/checkout')) {
         if (!RolePermissions.canAccessPayments(role)) {
           return AppRoutes.dashboard;

@@ -284,17 +284,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                                return;
                              }
 
-                             // For real table orders, require a valid backend cart
-                             final isCounter = isCounterOrder ||
-                                 ref.read(counterTableProvider)?.id == checkoutTableId;
-                             if (!isCounter && (cartState.backendCartId == null ||
-                                 cartState.backendCartId!.isEmpty)) {
-                               setState(() => _isSending = false);
-                               this.context.showErrorSnack(
-                                 'Cart not synced with server yet. Please wait and retry.'
-                               );
-                               return;
-                             }
+                              // For any table, ordersProvider will auto-sync the cart if not yet synced
 
                              final sessionIds = ref.read(cartSessionIdsProvider);
                              final tenantId = sessionIds.tenantId ?? '';

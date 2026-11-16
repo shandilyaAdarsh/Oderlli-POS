@@ -24,7 +24,7 @@ class _RestroBottomNavState extends ConsumerState<RestroBottomNav> {
   void _openCreateOrderModal(BuildContext context) {
     showDialog(
       context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.7),
+      barrierColor: Colors.black.withValues(alpha: 0.5),
       builder: (ctx) => const _CreateOrderDialog(),
     );
   }
@@ -40,7 +40,17 @@ class _RestroBottomNavState extends ConsumerState<RestroBottomNav> {
 
     return Container(
       height: 70.h,
-      color: const Color(0xFF262626),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.border, width: 1)),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 10,
+            offset: Offset(0, -4),
+          ),
+        ],
+      ),
       padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 8.h),
       child: Stack(
         clipBehavior: Clip.none,
@@ -119,7 +129,7 @@ class _RestroBottomNavState extends ConsumerState<RestroBottomNav> {
                   child: const Center(
                     child: Icon(
                       Icons.dinner_dining_rounded,
-                      color: Color(0xFF1F1F1F),
+                      color: AppColors.textOnWarning,
                       size: 32,
                     ),
                   ),
@@ -147,8 +157,11 @@ class _RestroBottomNavState extends ConsumerState<RestroBottomNav> {
         margin: EdgeInsets.symmetric(horizontal: 4.w),
         padding: EdgeInsets.symmetric(horizontal: 8.w),
         decoration: BoxDecoration(
-          color: isActive ? const Color(0xFF343434) : Colors.transparent,
+          color: isActive ? AppColors.sidebarActiveBg : Colors.transparent,
           borderRadius: BorderRadius.circular(20.r),
+          border: isActive
+              ? Border.all(color: AppColors.primary.withValues(alpha: 0.3), width: 1)
+              : null,
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -156,7 +169,7 @@ class _RestroBottomNavState extends ConsumerState<RestroBottomNav> {
           children: [
             Icon(
               icon,
-              color: isActive ? const Color(0xFFF5F5F5) : const Color(0xFFABABAB),
+              color: isActive ? AppColors.sidebarActive : AppColors.sidebarText,
               size: 20,
             ),
             Gap(8.w),
@@ -169,7 +182,7 @@ class _RestroBottomNavState extends ConsumerState<RestroBottomNav> {
                   fontFamily: 'Inter',
                   fontSize: 14.sp,
                   fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                  color: isActive ? const Color(0xFFF5F5F5) : const Color(0xFFABABAB),
+                  color: isActive ? AppColors.sidebarTextActive : AppColors.sidebarText,
                 ),
               ),
             ),
@@ -179,8 +192,6 @@ class _RestroBottomNavState extends ConsumerState<RestroBottomNav> {
     );
   }
 }
-
-// ─── Create Order Modal (Matching BottomNav.jsx Modal) ────────────────────────
 
 class _CreateOrderDialog extends ConsumerStatefulWidget {
   const _CreateOrderDialog();
@@ -192,7 +203,7 @@ class _CreateOrderDialog extends ConsumerStatefulWidget {
 class _CreateOrderDialogState extends ConsumerState<_CreateOrderDialog> {
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
-  int _guestCount = 2;
+  int _guestCount = 1;
 
   @override
   void dispose() {
@@ -206,22 +217,22 @@ class _CreateOrderDialogState extends ConsumerState<_CreateOrderDialog> {
     final phone = _phoneCtrl.text.trim();
 
     ref.read(customerDetailsProvider.notifier).setCustomer(
-          name: name.isEmpty ? 'Guest Customer' : name,
-          phone: phone,
-          guests: _guestCount,
-        );
+      name: name.isNotEmpty ? name : null,
+      phone: phone.isNotEmpty ? phone : null,
+      guests: _guestCount,
+    );
 
     Navigator.of(context).pop();
-    context.go(AppRoutes.floor); // Go to Tables
+    context.go(AppRoutes.tableSelection);
   }
 
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: const Color(0xFF262626),
+      backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20.r),
-        side: const BorderSide(color: Color(0xFF383838), width: 1),
+        side: const BorderSide(color: AppColors.border, width: 1),
       ),
       insetPadding: EdgeInsets.symmetric(horizontal: 40.w, vertical: 24.h),
       child: Container(
@@ -241,14 +252,14 @@ class _CreateOrderDialogState extends ConsumerState<_CreateOrderDialog> {
                     fontFamily: 'Inter',
                     fontSize: 20.sp,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFFF5F5F5),
+                    color: AppColors.textPrimary,
                   ),
                 ),
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
                   icon: const Icon(
                     Icons.close,
-                    color: Color(0xFFABABAB),
+                    color: AppColors.textSecondary,
                     size: 22,
                   ),
                 ),
@@ -264,27 +275,28 @@ class _CreateOrderDialogState extends ConsumerState<_CreateOrderDialog> {
                 fontFamily: 'Inter',
                 fontSize: 13.sp,
                 fontWeight: FontWeight.w600,
-                color: const Color(0xFFABABAB),
+                color: AppColors.textSecondary,
               ),
             ),
             Gap(8.h),
             Container(
               decoration: BoxDecoration(
-                color: const Color(0xFF1F1F1F),
+                color: AppColors.surfaceVariant,
                 borderRadius: BorderRadius.circular(12.r),
+                border: Border.all(color: AppColors.border, width: 1),
               ),
               padding: EdgeInsets.symmetric(horizontal: 16.w),
               child: TextField(
                 controller: _nameCtrl,
                 style: const TextStyle(
                   fontFamily: 'Inter',
-                  color: Color(0xFFF5F5F5),
+                  color: AppColors.textPrimary,
                 ),
                 decoration: const InputDecoration(
                   hintText: 'Enter customer name',
                   hintStyle: TextStyle(
                     fontFamily: 'Inter',
-                    color: Color(0xFF666666),
+                    color: AppColors.textTertiary,
                   ),
                   border: InputBorder.none,
                   enabledBorder: InputBorder.none,
@@ -303,14 +315,15 @@ class _CreateOrderDialogState extends ConsumerState<_CreateOrderDialog> {
                 fontFamily: 'Inter',
                 fontSize: 13.sp,
                 fontWeight: FontWeight.w600,
-                color: const Color(0xFFABABAB),
+                color: AppColors.textSecondary,
               ),
             ),
             Gap(8.h),
             Container(
               decoration: BoxDecoration(
-                color: const Color(0xFF1F1F1F),
+                color: AppColors.surfaceVariant,
                 borderRadius: BorderRadius.circular(12.r),
+                border: Border.all(color: AppColors.border, width: 1),
               ),
               padding: EdgeInsets.symmetric(horizontal: 16.w),
               child: TextField(
@@ -318,13 +331,13 @@ class _CreateOrderDialogState extends ConsumerState<_CreateOrderDialog> {
                 keyboardType: TextInputType.phone,
                 style: const TextStyle(
                   fontFamily: 'Inter',
-                  color: Color(0xFFF5F5F5),
+                  color: AppColors.textPrimary,
                 ),
                 decoration: const InputDecoration(
                   hintText: '+91-9999999999',
                   hintStyle: TextStyle(
                     fontFamily: 'Inter',
-                    color: Color(0xFF666666),
+                    color: AppColors.textTertiary,
                   ),
                   border: InputBorder.none,
                   enabledBorder: InputBorder.none,
@@ -343,14 +356,15 @@ class _CreateOrderDialogState extends ConsumerState<_CreateOrderDialog> {
                 fontFamily: 'Inter',
                 fontSize: 13.sp,
                 fontWeight: FontWeight.w600,
-                color: const Color(0xFFABABAB),
+                color: AppColors.textSecondary,
               ),
             ),
             Gap(8.h),
             Container(
               decoration: BoxDecoration(
-                color: const Color(0xFF1F1F1F),
+                color: AppColors.surfaceVariant,
                 borderRadius: BorderRadius.circular(12.r),
+                border: Border.all(color: AppColors.border, width: 1),
               ),
               padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
               child: Row(
@@ -374,7 +388,7 @@ class _CreateOrderDialogState extends ConsumerState<_CreateOrderDialog> {
                       fontFamily: 'Inter',
                       fontSize: 15.sp,
                       fontWeight: FontWeight.w600,
-                      color: const Color(0xFFF5F5F5),
+                      color: AppColors.textPrimary,
                     ),
                   ),
                   IconButton(
@@ -403,7 +417,7 @@ class _CreateOrderDialogState extends ConsumerState<_CreateOrderDialog> {
                 onPressed: _handleCreateOrder,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
-                  foregroundColor: const Color(0xFF1F1F1F),
+                  foregroundColor: AppColors.textOnWarning,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12.r),
                   ),

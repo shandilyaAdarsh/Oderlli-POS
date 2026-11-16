@@ -13,28 +13,45 @@ import 'package:intl/intl.dart';
 ///   CurrencyFormatter.format(12500000.0)  →  '₹1,25,00,000.00'
 ///   CurrencyFormatter.symbol              →  '₹'
 abstract final class CurrencyFormatter {
-  /// The ISO 4217 currency code for Indian Rupee.
-  static const String currencyCode = 'INR';
+  /// The ISO 4217 currency code (configurable per branch).
+  static String currencyCode = 'INR';
 
-  /// The Unicode currency symbol for Indian Rupee.
-  static const String symbol = '₹';
+  /// The Unicode currency symbol.
+  static String symbol = '₹';
+
+  /// Locale identifier for formatting.
+  static String locale = 'en_IN';
 
   /// Full-precision formatter: `₹1,25,000.50`
-  ///
-  /// Uses the `en_IN` locale which natively produces the Indian
-  /// number grouping system (lakhs and crores).
-  static final NumberFormat _fullFormat = NumberFormat.currency(
+  static NumberFormat _fullFormat = NumberFormat.currency(
     locale: 'en_IN',
-    symbol: symbol,
+    symbol: '₹',
     decimalDigits: 2,
   );
 
   /// Compact formatter for metric tiles: `₹1.25L`
-  static final NumberFormat _compactFormat = NumberFormat.compactCurrency(
+  static NumberFormat _compactFormat = NumberFormat.compactCurrency(
     locale: 'en_IN',
-    symbol: symbol,
+    symbol: '₹',
     decimalDigits: 2,
   );
+
+  /// Dynamically updates currency configuration for the branch.
+  static void configure({String? code, String? sym, String? loc}) {
+    if (code != null) currencyCode = code;
+    if (sym != null) symbol = sym;
+    if (loc != null) locale = loc;
+    _fullFormat = NumberFormat.currency(
+      locale: locale,
+      symbol: symbol,
+      decimalDigits: 2,
+    );
+    _compactFormat = NumberFormat.compactCurrency(
+      locale: locale,
+      symbol: symbol,
+      decimalDigits: 2,
+    );
+  }
 
   /// Formats [value] as a full Indian Rupee string.
   ///
