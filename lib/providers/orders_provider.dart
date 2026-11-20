@@ -49,17 +49,20 @@ class OrdersNotifier extends AsyncNotifier<List<Order>> {
     final tables = ref.read(posTablesProvider).valueOrNull ?? [];
 
     return summaryList.map((summary) {
-      final tableNum = tables.firstWhere(
+      final matchingTable = tables.firstWhere(
         (t) => t.id == summary.tableId,
         orElse: () => TableModel(
           id: summary.tableId,
-          tableName: '1',
+          tableName: 'Table',
           capacity: 4,
           status: POSTableStatus.available,
           sectionName: '',
           floorName: '',
         ),
-      ).tableName;
+      );
+      final rawTableName = matchingTable.tableName;
+      final parsedDigits = RegExp(r'\d+').firstMatch(rawTableName)?.group(0);
+      final tableNum = int.tryParse(parsedDigits ?? '') ?? int.tryParse(rawTableName) ?? 0;
 
       final customerStr = summary.customerName != null && summary.customerName!.isNotEmpty
           ? 'Customer: ${summary.customerName}'
@@ -69,7 +72,8 @@ class OrdersNotifier extends AsyncNotifier<List<Order>> {
       return Order(
         id: summary.id,
         tableId: summary.tableId,
-        tableNumber: int.tryParse(tableNum) ?? 0,
+        tableNumber: tableNum,
+        tableName: rawTableName,
         orderNumber: summary.orderNumber,
         items: summary.items.map((i) => OrderItem(
           id: '',
@@ -228,8 +232,7 @@ class OrdersNotifier extends AsyncNotifier<List<Order>> {
 final activeOrdersProvider = Provider<List<Order>>((ref) {
   final list = ref.watch(ordersProvider).valueOrNull ?? [];
   return list.where((o) {
-    return o.status != OrderStatus.served &&
-        o.status != OrderStatus.completed &&
+    return o.status != OrderStatus.completed &&
         o.status != OrderStatus.cancelled;
   }).toList();
 });

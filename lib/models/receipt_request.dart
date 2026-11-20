@@ -29,9 +29,7 @@ class ReceiptRequest {
   /// Formats the full receipt as plain text for ESC/POS or PDF.
   String toReceiptText() {
     final buf = StringBuffer();
-    final tableLabel = order.tableNumber == 0
-        ? 'Counter'
-        : 'Table ${order.tableNumber}';
+    final tableLabel = order.displayTableName;
     final date = order.createdAt;
     final dateStr =
         '${date.day.toString().padLeft(2, '0')} '

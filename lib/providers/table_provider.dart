@@ -100,50 +100,27 @@ class POSTablesNotifier extends AsyncNotifier<List<TableModel>> {
   }
 
   Future<void> clearTable(String tableId) async {
-    try {
-      // 1. Evict QR session cache for this table locally
-      ref.read(cartRepositoryProvider).evictTableSession(tableId);
+    // 1. Evict QR session cache for this table locally
+    ref.read(cartRepositoryProvider).evictTableSession(tableId);
 
-      // 2. Call backend vacate
-      await ref.read(tableRepositoryProvider).vacateTable(tableId);
+    // 2. Call backend vacate (throws on failure so UI accurately reflects errors)
+    await ref.read(tableRepositoryProvider).vacateTable(tableId);
 
-      // 3. Update state
-      if (AppConfig.allowMockFallbackInDebug && state.valueOrNull != null) {
-        state = AsyncData([
-          for (final t in state.value!)
-            if (t.id == tableId)
-              t.copyWith(
-                status: POSTableStatus.available,
-                guestCount: 0,
-                assignedWaiterName: null,
-                occupiedSince: null,
-                billTotal: 0.0,
-              )
-            else
-              t,
-        ]);
-      } else {
-        await refreshTables();
-      }
-    } catch (e) {
-      if (AppConfig.allowMockFallbackInDebug && state.valueOrNull != null) {
-        state = AsyncData([
-          for (final t in state.value!)
-            if (t.id == tableId)
-              t.copyWith(
-                status: POSTableStatus.available,
-                guestCount: 0,
-                assignedWaiterName: null,
-                occupiedSince: null,
-                billTotal: 0.0,
-              )
-            else
-              t,
-        ]);
-      } else {
-        await refreshTables();
-        rethrow;
-      }
+    // 3. Update local table state to available ONLY when backend confirms vacancy
+    if (state.valueOrNull != null) {
+      state = AsyncData([
+        for (final t in state.value!)
+          if (t.id == tableId)
+            t.copyWith(
+              status: POSTableStatus.available,
+              guestCount: 0,
+              assignedWaiterName: null,
+              occupiedSince: null,
+              billTotal: 0.0,
+            )
+          else
+            t,
+      ]);
     }
   }
 }
@@ -257,8 +234,7 @@ final liveTableStatusProvider = Provider<List<TableModel>>((ref) {
   // Build a lookup: tableId -> most-recent active order
   final Map<String, Order> activeOrderByTable = {};
   for (final order in orders) {
-    if (order.status == OrderStatus.served ||
-        order.status == OrderStatus.completed ||
+    if (order.status == OrderStatus.completed ||
         order.status == OrderStatus.cancelled) {
       continue;
     }
@@ -285,7 +261,7 @@ final liveTableStatusProvider = Provider<List<TableModel>>((ref) {
     return enrichedTable.copyWith(
       billTotal: order.total,
       occupiedSince: order.createdAt,
-      status: table.status, // Enforce authoritative backend state, remove artificial override
+      status: table.status == POSTableStatus.available ? POSTableStatus.occupied : table.status,
     );
   }).toList();
 });

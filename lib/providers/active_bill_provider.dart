@@ -117,12 +117,20 @@ class ActiveBillState {
 
   double get subtotal => order.subtotal;
 
-  int get subtotalPaise => (subtotal * 100).round();
-  int get discountPaise => (subtotalPaise * discountPercent / 100).round();
+  int get subtotalPaise => order.subtotalMinor > 0 ? order.subtotalMinor : (subtotal * 100).round();
+  int get discountPaise => (order.status == OrderStatus.completed && order.discountTotalMinor > 0)
+      ? order.discountTotalMinor
+      : (subtotalPaise * discountPercent / 100).round();
   int get taxablePaise => subtotalPaise - discountPaise;
-  int get taxPaise => (taxablePaise * order.taxPercent / 100).round();
-  int get serviceChargePaise => (taxablePaise * serviceChargePercent / 100).round();
-  int get grandTotalPaise => taxablePaise + taxPaise + serviceChargePaise;
+  int get taxPaise => (order.status == OrderStatus.completed && order.taxTotalMinor > 0)
+      ? order.taxTotalMinor
+      : (taxablePaise * order.taxPercent / 100).round();
+  int get serviceChargePaise => (order.status == OrderStatus.completed && order.grandTotalMinor > 0)
+      ? (order.grandTotalMinor - taxablePaise - taxPaise).clamp(0, order.grandTotalMinor)
+      : (taxablePaise * serviceChargePercent / 100).round();
+  int get grandTotalPaise => (order.status == OrderStatus.completed && order.grandTotalMinor > 0)
+      ? order.grandTotalMinor
+      : taxablePaise + taxPaise + serviceChargePaise;
 
   double get discountAmount => discountPaise / 100.0;
   double get taxableAmount => taxablePaise / 100.0;
@@ -130,7 +138,9 @@ class ActiveBillState {
   double get serviceChargeAmount => serviceChargePaise / 100.0;
   double get total => grandTotalPaise / 100.0;
 
-  int get amountPaidPaise => payments.fold(0, (sum, p) => sum + p.amountMinor);
+  int get amountPaidPaise => (order.status == OrderStatus.completed && payments.isEmpty)
+      ? grandTotalPaise
+      : payments.fold(0, (sum, p) => sum + p.amountMinor);
   int get amountRemainingPaise => grandTotalPaise - amountPaidPaise;
 
   double get amountPaid => amountPaidPaise / 100.0;
@@ -225,6 +235,18 @@ class ActiveBillNotifier extends StateNotifier<ActiveBillState?> {
           ? orderDetail.grandTotalMinor
           : (currentOrder?.grandTotalMinor ?? 0);
 
+      final discountPercent = orderDetail.discountTotalMinor > 0 && subtotalMinor > 0 
+          ? (orderDetail.discountTotalMinor / subtotalMinor) * 100 
+          : (state?.discountPercent ?? 0.0);
+      final taxableMinor = subtotalMinor - orderDetail.discountTotalMinor;
+      final taxPercent = orderDetail.taxTotalMinor > 0 && taxableMinor > 0
+          ? (orderDetail.taxTotalMinor / taxableMinor) * 100
+          : 5.0;
+      final scPaise = grandTotalMinor - taxableMinor - orderDetail.taxTotalMinor;
+      final scPercent = scPaise > 0 && taxableMinor > 0
+          ? (scPaise / taxableMinor) * 100
+          : (state?.serviceChargePercent ?? 10.0);
+
       final fullOrder = Order(
         id: orderDetail.id,
         tableId: orderDetail.tableId.isNotEmpty ? orderDetail.tableId : (currentOrder?.tableId ?? ''),
@@ -235,12 +257,8 @@ class ActiveBillNotifier extends StateNotifier<ActiveBillState?> {
         status: orderDetail.status,
         updatedAt: orderDetail.updatedAt,
         servedBy: orderDetail.createdBy ?? currentOrder?.servedBy,
-        discountPercent: orderDetail.discountTotalMinor > 0 && subtotalMinor > 0 
-            ? (orderDetail.discountTotalMinor / subtotalMinor) * 100 
-            : (state?.discountPercent ?? 0.0),
-        taxPercent: orderDetail.taxTotalMinor > 0 && (subtotalMinor - orderDetail.discountTotalMinor) > 0
-            ? (orderDetail.taxTotalMinor / (subtotalMinor - orderDetail.discountTotalMinor)) * 100
-            : 5.0,
+        discountPercent: discountPercent,
+        taxPercent: taxPercent,
         notes: orderDetail.orderNotes ?? currentOrder?.notes,
         versionNum: orderDetail.versionNum,
         orderSnapshotId: orderDetail.orderSnapshotId,
@@ -254,7 +272,33 @@ class ActiveBillNotifier extends StateNotifier<ActiveBillState?> {
       // Verify order ID hasn't changed while request was in-flight
       if (state == null || state!.order.id != orderId) return;
 
-      state = state!.copyWith(order: fullOrder);
+      state = state!.copyWith(
+        order: fullOrder,
+        discountPercent: discountPercent,
+        serviceChargePercent: scPercent,
+        billId: orderDetail.billId ?? state!.billId,
+      );
+
+      // If authoritative settlements are attached from the bill, hydrate payments directly
+      if (orderDetail.settlements != null && orderDetail.settlements!.isNotEmpty) {
+        final payments = orderDetail.settlements!.map((s) {
+          final smap = s is Map<String, dynamic> ? s : <String, dynamic>{};
+          return PaymentRecord(
+            id: smap['id']?.toString() ?? '',
+            method: smap['payment_method'] ?? 'cash',
+            amount: (smap['amount_minor'] as int? ?? 0) / 100.0,
+            timestamp: DateTime.tryParse(smap['created_at']?.toString() ?? '') ?? DateTime.now(),
+            waiterName: fullOrder.servedBy ?? 'Staff',
+            amountMinor: smap['amount_minor'] as int? ?? 0,
+          );
+        }).toList();
+
+        state = state!.copyWith(
+          payments: payments,
+          paymentsHydrated: true,
+        );
+        return;
+      }
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[ActiveBillNotifier] Failed to fetch full order detail: $e');
@@ -307,6 +351,23 @@ class ActiveBillNotifier extends StateNotifier<ActiveBillState?> {
         }
       }
 
+      if (currentState.order.status == OrderStatus.completed) {
+        final amountPaise = currentState.grandTotalPaise;
+        final completedPayment = PaymentRecord(
+          id: 'completed-${currentState.order.id}',
+          method: 'Completed Payment',
+          amount: amountPaise / 100.0,
+          timestamp: currentState.order.updatedAt ?? currentState.order.createdAt,
+          waiterName: currentState.order.servedBy ?? 'Staff',
+          amountMinor: amountPaise,
+        );
+        state = state!.copyWith(
+          payments: [completedPayment],
+          paymentsHydrated: true,
+        );
+        return;
+      }
+
       state = state!.copyWith(
         payments: const <PaymentRecord>[],
         paymentsHydrated: true,
@@ -314,6 +375,22 @@ class ActiveBillNotifier extends StateNotifier<ActiveBillState?> {
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[ActiveBillNotifier] Failed to load payments via projection: $e');
+      }
+      if (currentState.order.status == OrderStatus.completed) {
+        final amountPaise = currentState.grandTotalPaise;
+        final completedPayment = PaymentRecord(
+          id: 'completed-${currentState.order.id}',
+          method: 'Completed Payment',
+          amount: amountPaise / 100.0,
+          timestamp: currentState.order.updatedAt ?? currentState.order.createdAt,
+          waiterName: currentState.order.servedBy ?? 'Staff',
+          amountMinor: amountPaise,
+        );
+        state = state!.copyWith(
+          payments: [completedPayment],
+          paymentsHydrated: true,
+        );
+        return;
       }
       state = state!.copyWith(
         payments: const <PaymentRecord>[],
@@ -486,7 +563,11 @@ class ActiveBillNotifier extends StateNotifier<ActiveBillState?> {
         }
         _ref.read(ordersProvider.notifier).updateStatus(currentState.order.id, OrderStatus.completed);
         if (tableId.isNotEmpty) {
-          _ref.read(posTablesProvider.notifier).clearTable(tableId);
+          try {
+            await _ref.read(posTablesProvider.notifier).clearTable(tableId);
+          } catch (e) {
+            debugPrint('[ActiveBill] Auto-vacate table $tableId: $e');
+          }
         }
       }
     } on DioException catch (e) {

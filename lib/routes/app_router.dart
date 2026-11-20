@@ -41,11 +41,15 @@ final routerRefreshListenableProvider = Provider<RouterRefreshListenable>((ref) 
   return RouterRefreshListenable(ref);
 });
 
+final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
+final GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
+
 /// GoRouter configuration provider for the Orderlyy POS.
 final routerProvider = Provider<GoRouter>((ref) {
   final refreshListenable = ref.watch(routerRefreshListenableProvider);
 
   return GoRouter(
+    navigatorKey: _rootNavigatorKey,
     initialLocation: AppRoutes.splash,
     debugLogDiagnostics: true,
     refreshListenable: refreshListenable,
@@ -150,6 +154,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // ── Main Shell with Persistent Sidebar Navigation ─────────────────────
       ShellRoute(
+        navigatorKey: _shellNavigatorKey,
         builder: (context, state, child) => MainShell(child: child),
         routes: [
           GoRoute(

@@ -260,6 +260,12 @@ class BillingScreen extends ConsumerWidget {
                             // Non-fatal if printer offline or fails
                           }
 
+                          if (billState.order.status == OrderStatus.completed) {
+                            if (!context.mounted) return;
+                            context.showSuccessSnack('Receipt sent to printer.');
+                            return;
+                          }
+
                           try {
                             if (tableId.isNotEmpty) {
                               await ref.read(posTablesProvider.notifier).clearTable(tableId);
@@ -285,8 +291,12 @@ class BillingScreen extends ConsumerWidget {
                           context.go('/floor');
                         }
                       : () => context.go('/checkout/payment'),
-                  text: billState.isPaid ? 'COMPLETE SESSION' : 'PROCEED TO PAY',
-                  icon: billState.isPaid ? Icons.check_circle_outline : Icons.payment,
+                  text: billState.order.status == OrderStatus.completed
+                      ? 'PRINT RECEIPT'
+                      : (billState.isPaid ? 'COMPLETE SESSION' : 'PROCEED TO PAY'),
+                  icon: billState.order.status == OrderStatus.completed
+                      ? Icons.print_outlined
+                      : (billState.isPaid ? Icons.check_circle_outline : Icons.payment),
                   backgroundColor: billState.isPaid ? AppColors.success : AppColors.primary,
                 ),
               ),
@@ -299,6 +309,7 @@ class BillingScreen extends ConsumerWidget {
 
 
   Widget _buildServiceChargeSection(WidgetRef ref, ActiveBillState billState) {
+    final enabled = !billState.isPaid;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -312,6 +323,7 @@ class BillingScreen extends ConsumerWidget {
               0,
               billState.serviceChargePercent,
               (val) => ref.read(activeBillProvider.notifier).applyServiceCharge(val),
+              enabled: enabled,
             ),
             Gap(AppSpacing.xs.w),
             _buildPresetChip(
@@ -320,6 +332,7 @@ class BillingScreen extends ConsumerWidget {
               10,
               billState.serviceChargePercent,
               (val) => ref.read(activeBillProvider.notifier).applyServiceCharge(val),
+              enabled: enabled,
             ),
             Gap(AppSpacing.xs.w),
             _buildPresetChip(
@@ -328,6 +341,7 @@ class BillingScreen extends ConsumerWidget {
               15,
               billState.serviceChargePercent,
               (val) => ref.read(activeBillProvider.notifier).applyServiceCharge(val),
+              enabled: enabled,
             ),
           ],
         ),
@@ -386,6 +400,7 @@ class BillingScreen extends ConsumerWidget {
     ActiveBillState billState,
     BuildContext context,
   ) {
+    final enabled = !billState.isPaid;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -399,6 +414,7 @@ class BillingScreen extends ConsumerWidget {
               0,
               billState.discountPercent,
               (val) => _handleDiscountTap(ref, billState, val, context),
+              enabled: enabled,
             ),
             Gap(AppSpacing.xs.w),
             _buildPresetChip(
@@ -407,6 +423,7 @@ class BillingScreen extends ConsumerWidget {
               10,
               billState.discountPercent,
               (val) => _handleDiscountTap(ref, billState, val, context),
+              enabled: enabled,
             ),
             Gap(AppSpacing.xs.w),
             _buildPresetChip(
@@ -415,6 +432,7 @@ class BillingScreen extends ConsumerWidget {
               20,
               billState.discountPercent,
               (val) => _handleDiscountTap(ref, billState, val, context),
+              enabled: enabled,
             ),
           ],
         ),
@@ -498,15 +516,16 @@ class BillingScreen extends ConsumerWidget {
     String label,
     double value,
     double currentValue,
-    ValueChanged<double> onChanged,
-  ) {
+    ValueChanged<double> onChanged, {
+    bool enabled = true,
+  }) {
     final isSelected = value == currentValue;
     return Expanded(
       child: Material(
         color: isSelected ? AppColors.primary.withValues(alpha: 0.12) : AppColors.surfaceVariant,
         borderRadius: BorderRadius.circular(AppSpacing.radiusSM.r),
         child: InkWell(
-          onTap: () => onChanged(value),
+          onTap: enabled ? () => onChanged(value) : null,
           borderRadius: BorderRadius.circular(AppSpacing.radiusSM.r),
           child: Container(
             constraints: BoxConstraints(minHeight: 48.h),
@@ -523,7 +542,9 @@ class BillingScreen extends ConsumerWidget {
               label,
               style: AppTypography.labelSmall.copyWith(
                 fontWeight: FontWeight.w700,
-                color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                color: !enabled
+                    ? AppColors.textSecondary.withValues(alpha: 0.5)
+                    : (isSelected ? AppColors.primary : AppColors.textPrimary),
               ),
             ),
           ),

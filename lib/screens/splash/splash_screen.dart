@@ -48,42 +48,45 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.sidebarBg,
-      body: Center(
-        child: FadeTransition(
-          opacity: _fade,
-          child: ScaleTransition(
-            scale: _scale,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Animated Icon
-                Image.asset(
-                  'assets/images/icon.png',
-                  width: 140.w,
-                  height: 140.h,
-                  fit: BoxFit.contain,
-                  filterQuality: FilterQuality.high,
-                ),
-                Gap(24.h),
-                // Logo
-                Image.asset(
-                  'assets/images/logo.png',
-                  width: 240.w,
-                  fit: BoxFit.contain,
-                  filterQuality: FilterQuality.high,
-                ),
-                Gap(48.h),
-                SizedBox(
-                  width: 32.w,
-                  height: 32.h,
-                  child: const CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation(AppColors.primary),
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
+        backgroundColor: AppColors.sidebarBg,
+        body: Center(
+          child: FadeTransition(
+            opacity: _fade,
+            child: ScaleTransition(
+              scale: _scale,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Animated Icon
+                  Image.asset(
+                    'assets/images/icon.png',
+                    width: 140.w,
+                    height: 140.h,
+                    fit: BoxFit.contain,
+                    filterQuality: FilterQuality.high,
                   ),
-                ),
-              ],
+                  Gap(24.h),
+                  // Logo
+                  Image.asset(
+                    'assets/images/logo.png',
+                    width: 240.w,
+                    fit: BoxFit.contain,
+                    filterQuality: FilterQuality.high,
+                  ),
+                  Gap(48.h),
+                  SizedBox(
+                    width: 32.w,
+                    height: 32.h,
+                    child: const CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation(AppColors.primary),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../theme/theme.dart';
 import '../../providers/table_provider.dart';
 import '../../providers/orders_provider.dart';
+import '../../providers/active_bill_provider.dart';
 import '../../providers/pos_cart_provider.dart';
 import '../../models/models.dart';
 import '../../routes/app_routes.dart';
@@ -64,7 +65,6 @@ class _FloorScreenState extends ConsumerState<FloorScreen> {
     final orders = ref.read(ordersProvider).valueOrNull ?? [];
     final activeOrder = orders.where((o) =>
       o.tableId == table.id &&
-      o.status != OrderStatus.served &&
       o.status != OrderStatus.completed &&
       o.status != OrderStatus.cancelled
     ).firstOrNull;
@@ -132,41 +132,73 @@ class _FloorScreenState extends ConsumerState<FloorScreen> {
               if (table.occupiedSince != null)
                 _buildDetailItem('Seated at:', _timeLabel(table.occupiedSince!)),
               _buildDetailItem('Capacity:', '${table.capacity} seats'),
-              if (table.billTotal > 0)
+              if (activeOrder != null) ...[
+                _buildDetailItem('Order #:', activeOrder.orderNumber?.toString() ?? (activeOrder.id.length >= 8 ? activeOrder.id.substring(0, 8) : activeOrder.id)),
+                _buildDetailItem('Items:', '${activeOrder.itemCount} items'),
+                _buildDetailItem('Bill Total:', CurrencyFormatter.format(activeOrder.total)),
+              ] else if (table.billTotal > 0) ...[
                 _buildDetailItem('Current Bill:', CurrencyFormatter.format(table.billTotal)),
-              if (activeOrder != null)
-                _buildDetailItem('Order #:', activeOrder.orderNumber?.toString() ?? activeOrder.id.substring(0, 8)),
+              ],
               Gap(24.h),
               Row(
                 children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () async {
-                        Navigator.of(ctx).pop();
-                        try {
-                          await ref.read(posTablesProvider.notifier).clearTable(table.id);
-                          if (!mounted) return;
-                          context.showSuccessSnack('Table ${table.tableName} cleared.');
-                        } catch (e) {
-                          if (!mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                            content: Text('Could not clear table: $e'),
-                            backgroundColor: AppColors.error,
-                          ));
-                        }
-                      },
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: AppColors.border),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
-                        padding: EdgeInsets.symmetric(vertical: 12.h),
-                      ),
-                      child: Text(
-                        'Vacate / Settle',
-                        style: TextStyle(color: AppColors.error, fontSize: 13.sp),
+                  if (activeOrder != null) ...[
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(ctx).pop();
+                          ref.read(activeTableIdProvider.notifier).state = table.id;
+                          ref.read(activeBillProvider.notifier).setOrder(activeOrder);
+                          context.go(AppRoutes.billing);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.success,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+                          padding: EdgeInsets.symmetric(vertical: 12.h),
+                          elevation: 0,
+                        ),
+                        child: Text(
+                          'View Bill / Settle',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp),
+                        ),
                       ),
                     ),
-                  ),
-                  Gap(12.w),
+                    Gap(8.w),
+                  ] else ...[
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () async {
+                          Navigator.of(ctx).pop();
+                          try {
+                            await ref.read(posTablesProvider.notifier).clearTable(table.id);
+                            final tableOrders = ref.read(ordersProvider).valueOrNull?.where((o) => o.tableId == table.id).toList() ?? [];
+                            for (final o in tableOrders) {
+                              ref.read(ordersProvider.notifier).updateStatus(o.id, OrderStatus.completed);
+                            }
+                            if (!mounted) return;
+                            context.showSuccessSnack('Table ${table.tableName} cleared.');
+                          } catch (e) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: Text('Could not clear table: $e'),
+                              backgroundColor: AppColors.error,
+                            ));
+                          }
+                        },
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: AppColors.border),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+                          padding: EdgeInsets.symmetric(vertical: 12.h),
+                        ),
+                        child: Text(
+                          'Vacate Table',
+                          style: TextStyle(color: AppColors.error, fontSize: 13.sp),
+                        ),
+                      ),
+                    ),
+                    Gap(8.w),
+                  ],
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {

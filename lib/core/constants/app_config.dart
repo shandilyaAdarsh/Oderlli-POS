@@ -4,8 +4,8 @@ abstract final class AppConfig {
   /// Compile-time override: pass --dart-define=API_BASE_URL=http://192.168.1.50:3001/api/v1
   static const String _envBaseUrl = String.fromEnvironment('API_BASE_URL');
 
-  static const String devUrl = 'http://localhost:3001/api/v1';
-  static const String prodUrl = 'https://api.orderlyy.com/api/v1';
+  static const String devUrl = 'https://table-os.onrender.com/api/v1';
+  static const String prodUrl = 'https://table-os.onrender.com/api/v1';
   static const String healthEndpoint = '/health';
 
   static String get baseUrl {

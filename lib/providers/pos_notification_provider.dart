@@ -60,6 +60,10 @@ class PosNotificationsNotifier extends StateNotifier<List<PosNotification>> {
 
     switch (order.status) {
       case OrderStatus.served:
+        type = PosNotificationType.tableAlert;
+        title = 'Order #$orderNum Served';
+        message = 'Table ${order.tableNumber} order served. Dining active ($totalStr)';
+        break;
       case OrderStatus.completed:
         type = PosNotificationType.paymentSuccess;
         title = 'Order #$orderNum Completed';

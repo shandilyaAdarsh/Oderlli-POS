@@ -27,7 +27,7 @@ class DashboardScreen extends ConsumerStatefulWidget {
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   late DateTime _currentTime;
   Timer? _timer;
-  String _selectedAdminTab = 'Metrics'; // 'Metrics' | 'Orders' | 'Overview'
+  String _selectedAdminTab = 'Overview'; // 'Overview' | 'Orders'
 
   @override
   void initState() {
@@ -61,7 +61,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         OrderStatus.ready => 'Ready',
         OrderStatus.preparing || OrderStatus.accepted => 'In Progress',
         OrderStatus.pending => 'Pending',
-        OrderStatus.served || OrderStatus.completed => 'Completed',
+        OrderStatus.served => 'Served',
+        OrderStatus.completed => 'Completed',
         OrderStatus.cancelled => 'Cancelled',
         OrderStatus.syncConflict => 'Conflict',
       };
@@ -113,9 +114,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     if (_selectedAdminTab == 'Overview')
                       // ── Home View (Greetings, MiniCards, Recent Orders, Popular Dishes)
                       _buildHomeOverview(userName, totalRevenue, inProgressOrders, filteredOrders)
-                    else if (_selectedAdminTab == 'Metrics')
-                      // ── Metrics View (Overall Performance + Item Details from Metrics.jsx)
-                      _buildMetricsView()
                     else
                       // ── Admin Orders Table
                       _buildAdminOrdersView(filteredOrders),
@@ -138,21 +136,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        // Action Buttons
-        Row(
-          children: [
-            _buildAdminActionButton(
-              label: 'Add Table',
-              icon: Icons.table_restaurant_rounded,
-              onTap: () => _showAddTableDialog(),
-            ),
-            Gap(12.w),
-            _buildAdminActionButton(
-              label: 'Add Dishes',
-              icon: Icons.fastfood_rounded,
-              onTap: () => context.go(AppRoutes.menu),
-            ),
-          ],
+        Text(
+          'Operational Dashboard',
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 20.sp,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+          ),
         ),
 
         // Tabs Toggle
@@ -166,42 +157,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           child: Row(
             children: [
               _buildTabPill('Overview'),
-              _buildTabPill('Metrics'),
               _buildTabPill('Orders'),
             ],
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildAdminActionButton({
-    required String label,
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
-    return ElevatedButton.icon(
-      onPressed: onTap,
-      icon: Icon(icon, size: 18, color: AppColors.textPrimary),
-      label: Text(
-        label,
-        style: TextStyle(
-          fontFamily: 'Inter',
-          fontSize: 13.sp,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
-        ),
-      ),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.surface,
-        foregroundColor: AppColors.textPrimary,
-        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10.r),
-          side: const BorderSide(color: AppColors.border, width: 1),
-        ),
-        elevation: 0,
-      ),
     );
   }
 
@@ -841,254 +801,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  // ─── Metrics View (Metrics.jsx) ───────────────────────────────────────────
-
-  Widget _buildMetricsView() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Overall Performance Header
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Overall Performance',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 20.sp,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                Gap(4.h),
-                Text(
-                  'Real-time revenue, customer traffic, and event volume',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 13.sp,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(8.r),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Row(
-                children: [
-                  Text(
-                    'Last 1 Month',
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 12.sp,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  Gap(6.w),
-                  Icon(Icons.arrow_drop_down, color: AppColors.textPrimary, size: 16),
-                ],
-              ),
-            ),
-          ],
-        ),
-
-        Gap(16.h),
-
-        // Overall Performance 4-Card Grid
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 4,
-            crossAxisSpacing: 16.w,
-            mainAxisSpacing: 16.h,
-            childAspectRatio: 2.2,
-          ),
-          itemCount: RestroMockData.overallPerformance.length,
-          itemBuilder: (context, i) {
-            final metric = RestroMockData.overallPerformance[i];
-            return Container(
-              padding: EdgeInsets.all(18.r),
-              decoration: BoxDecoration(
-                color: metric.color,
-                borderRadius: BorderRadius.circular(12.r),
-                boxShadow: [
-                  BoxShadow(
-                    color: metric.color.withValues(alpha: 0.3),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        metric.title,
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 13.sp,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFFF5F5F5),
-                        ),
-                      ),
-                      Row(
-                        children: [
-                          Icon(
-                            metric.isIncrease ? Icons.arrow_upward : Icons.arrow_downward,
-                            size: 14,
-                            color: metric.isIncrease ? Colors.white : Colors.redAccent,
-                          ),
-                          Gap(2.w),
-                          Text(
-                            metric.percentage,
-                            style: TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 12.sp,
-                              fontWeight: FontWeight.w700,
-                              color: metric.isIncrease ? Colors.white : Colors.redAccent,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  Text(
-                    metric.value,
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 24.sp,
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFFF5F5F5),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
-
-        Gap(32.h),
-
-        // Item Details Header
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Item Details',
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 20.sp,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            Gap(4.h),
-            Text(
-              'Active inventory, live dishes, categories, and table capacity',
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 13.sp,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
-
-        Gap(16.h),
-
-        // Item Details 4-Card Grid
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 4,
-            crossAxisSpacing: 16.w,
-            mainAxisSpacing: 16.h,
-            childAspectRatio: 2.2,
-          ),
-          itemCount: RestroMockData.itemDetails.length,
-          itemBuilder: (context, i) {
-            final item = RestroMockData.itemDetails[i];
-            return Container(
-              padding: EdgeInsets.all(18.r),
-              decoration: BoxDecoration(
-                color: item.color,
-                borderRadius: BorderRadius.circular(12.r),
-                boxShadow: [
-                  BoxShadow(
-                    color: item.color.withValues(alpha: 0.3),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        item.title,
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 13.sp,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFFF5F5F5),
-                        ),
-                      ),
-                      Row(
-                        children: [
-                          Icon(
-                            item.isIncrease ? Icons.arrow_upward : Icons.arrow_downward,
-                            size: 14,
-                            color: Colors.white,
-                          ),
-                          Gap(2.w),
-                          Text(
-                            item.percentage,
-                            style: TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 12.sp,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  Text(
-                    item.value,
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 24.sp,
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFFF5F5F5),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
-      ],
-    );
-  }
-
   // ─── Admin Orders Table ────────────────────────────────────────────────────
 
   Widget _buildAdminOrdersView(List<RestroOrder> orders) {
@@ -1182,124 +894,5 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  // ─── Add Table Dialog (Modal.jsx in Dashboard) ─────────────────────────────
 
-  void _showAddTableDialog() {
-    final tableNoCtrl = TextEditingController();
-    int seats = 4;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => Dialog(
-          backgroundColor: AppColors.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16.r),
-            side: BorderSide(color: AppColors.border),
-          ),
-          child: Container(
-            width: 400.w,
-            padding: EdgeInsets.all(24.r),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Add Table',
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 18.sp,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () => Navigator.of(ctx).pop(),
-                      icon: Icon(Icons.close, color: AppColors.textSecondary),
-                    ),
-                  ],
-                ),
-                Gap(16.h),
-                Text(
-                  'Table Number / Name',
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 13.sp),
-                ),
-                Gap(6.h),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 14.w),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceVariant,
-                    borderRadius: BorderRadius.circular(10.r),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: TextField(
-                    controller: tableNoCtrl,
-                    style: TextStyle(color: AppColors.textPrimary),
-                    decoration: InputDecoration(
-                      hintText: 'e.g. 16, Patio-1',
-                      hintStyle: TextStyle(color: AppColors.textTertiary),
-                      border: InputBorder.none,
-                      filled: false,
-                    ),
-                  ),
-                ),
-                Gap(16.h),
-                Text(
-                  'Seats Capacity: $seats',
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 13.sp),
-                ),
-                Gap(6.h),
-                Slider(
-                  value: seats.toDouble(),
-                  min: 1,
-                  max: 12,
-                  divisions: 11,
-                  activeColor: AppColors.primary,
-                  inactiveColor: AppColors.border,
-                  onChanged: (val) {
-                    setDialogState(() => seats = val.toInt());
-                  },
-                ),
-                Gap(20.h),
-                SizedBox(
-                  width: double.infinity,
-                  height: 46.h,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      final tableNo = tableNoCtrl.text.trim();
-                      if (tableNo.isNotEmpty) {
-                        ref.read(restroTablesProvider.notifier).addTable(
-                              tableNo: tableNo,
-                              seats: seats,
-                            );
-                        Navigator.of(ctx).pop();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Table $tableNo added successfully!'),
-                            backgroundColor: AppColors.textPrimary,
-                          ),
-                        );
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10.r),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: const Text('Add Table', style: TextStyle(fontWeight: FontWeight.bold)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }

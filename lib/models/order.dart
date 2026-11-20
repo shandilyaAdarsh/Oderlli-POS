@@ -89,15 +89,26 @@ class OrderItem {
 
   factory OrderItem.fromJson(Map<String, dynamic> json, [List<dynamic> modsJson = const []]) {
     final modNames = modsJson
-        .map((m) => (m['modifier_option_name_snapshot'] ?? m.toString()) as String)
+        .map((m) => (m['modifier_option_name_snapshot'] ?? m['name'] ?? m.toString()) as String)
         .toList();
+
+    final name = (json['item_name_snapshot'] ?? json['name'] ?? json['item_name'] ?? '') as String;
+    final qty = (json['quantity'] ?? json['qty'] ?? 1) as num;
+    final unitPriceMinor = json['unit_price_minor'] != null
+        ? (json['unit_price_minor'] as num).toInt()
+        : json['unit_price'] != null
+            ? ((json['unit_price'] as num) * 100).round()
+            : json['price'] != null
+                ? ((json['price'] as num) * 100).round()
+                : 0;
+
     return OrderItem(
       id: (json['id'] ?? '') as String,
       menuItemId: (json['menu_item_id'] ?? '') as String,
-      itemNameSnapshot: (json['item_name_snapshot'] ?? '') as String,
-      unitPriceMinor: (json['unit_price_minor'] ?? 0) as int,
-      quantity: (json['quantity'] ?? 0) as int,
-      notes: json['item_notes'] as String?,
+      itemNameSnapshot: name,
+      unitPriceMinor: unitPriceMinor,
+      quantity: qty.toInt(),
+      notes: (json['item_notes'] ?? json['notes']) as String?,
       modifiers: modNames,
     );
   }
@@ -144,6 +155,7 @@ class Order {
     required this.id,
     required this.tableId,
     required this.tableNumber,
+    this.tableName,
     required this.items,
     required this.createdAt,
     this.status = OrderStatus.pending,
@@ -165,6 +177,7 @@ class Order {
   final String id;
   final String tableId;
   final int tableNumber;
+  final String? tableName;
   final List<OrderItem> items;
   final DateTime createdAt;
   final OrderStatus status;
@@ -176,6 +189,12 @@ class Order {
   final int versionNum;
   final String? orderSnapshotId;
   final String? orderNumber;
+
+  String get displayTableName {
+    if (tableName != null && tableName!.isNotEmpty) return tableName!;
+    if (tableNumber > 0) return 'Table $tableNumber';
+    return 'Table';
+  }
   
   // Stored internally as integer minor units
   final int subtotalMinor;
@@ -196,6 +215,7 @@ class Order {
     String? id,
     String? tableId,
     int? tableNumber,
+    String? tableName,
     List<OrderItem>? items,
     DateTime? createdAt,
     OrderStatus? status,
@@ -217,6 +237,7 @@ class Order {
         id: id ?? this.id,
         tableId: tableId ?? this.tableId,
         tableNumber: tableNumber ?? this.tableNumber,
+        tableName: tableName ?? this.tableName,
         items: items ?? this.items,
         createdAt: createdAt ?? this.createdAt,
         status: status ?? this.status,
@@ -408,6 +429,8 @@ class OrderDetail {
   final int discountTotalMinor;
   final int grandTotalMinor;
   final String? customerPaymentIntent;
+  final String? billId;
+  final List<dynamic>? settlements;
 
   const OrderDetail({
     required this.id,
@@ -441,6 +464,8 @@ class OrderDetail {
     this.discountTotalMinor = 0,
     this.grandTotalMinor = 0,
     this.customerPaymentIntent,
+    this.billId,
+    this.settlements,
   });
 
   double get subtotal => subtotalMinor / 100.0;
@@ -491,11 +516,27 @@ class OrderDetail {
       createdAt: DateTime.parse((json['created_at'] ?? DateTime.now().toIso8601String()) as String),
       updatedAt: DateTime.parse((json['updated_at'] ?? DateTime.now().toIso8601String()) as String),
       items: parsedItems,
-      subtotalMinor: (json['subtotal_minor'] as num?)?.toInt() ?? 0,
+      subtotalMinor: (json['subtotal_minor'] as num?)?.toInt() ??
+          (json['subtotal'] != null
+              ? ((json['subtotal'] as num) * 100).round()
+              : (json['total_amount'] != null
+                  ? ((json['total_amount'] as num) * 100).round()
+                  : (parsedItems.isNotEmpty
+                      ? parsedItems.fold<int>(0, (sum, i) => sum + (i.unitPriceMinor * i.quantity))
+                      : 0))),
       taxTotalMinor: (json['tax_total_minor'] as num?)?.toInt() ?? 0,
       discountTotalMinor: (json['discount_total_minor'] as num?)?.toInt() ?? 0,
-      grandTotalMinor: (json['grand_total_minor'] as num?)?.toInt() ?? 0,
+      grandTotalMinor: (json['grand_total_minor'] as num?)?.toInt() ??
+          (json['total_amount'] != null
+              ? ((json['total_amount'] as num) * 100).round()
+              : (json['total'] != null
+                  ? ((json['total'] as num) * 100).round()
+                  : (parsedItems.isNotEmpty
+                      ? parsedItems.fold<int>(0, (sum, i) => sum + (i.unitPriceMinor * i.quantity))
+                      : 0))),
       customerPaymentIntent: json['customer_payment_intent'] as String?,
+      billId: json['bill_id'] as String?,
+      settlements: json['settlements'] as List<dynamic>?,
     );
   }
 }
