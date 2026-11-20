@@ -30,10 +30,13 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final amountParam = GoRouterState.of(context).uri.queryParameters['amount'];
       final methodParam = GoRouterState.of(context).uri.queryParameters['method'];
-      
+      final bill = ref.read(activeBillProvider);
+
       setState(() {
         if (amountParam != null) {
           _cashTendered = amountParam;
+        } else if (bill != null && bill.amountRemainingPaise > 0 && _cashTendered.isEmpty) {
+          _cashTendered = (bill.amountRemainingPaise / 100.0).toStringAsFixed(2);
         }
         if (methodParam != null) {
           if (methodParam == 'cash') {
@@ -109,13 +112,24 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
       // Cash payment
       final amountPaise = _getCurrentTenderedAmountPaise(remainingPaise);
       if (amountPaise <= 0) {
+        context.showWarningSnack('Please enter a valid cash amount.');
         return;
       }
       final appliedAmountPaise = amountPaise > remainingPaise ? remainingPaise : amountPaise;
+      if (appliedAmountPaise <= 0) {
+        context.showWarningSnack('Bill has no remaining balance to pay.');
+        return;
+      }
       final appliedAmount = appliedAmountPaise / 100.0;
       await billNotifier.addPayment('Cash', appliedAmount);
       if (!mounted) return;
-      
+
+      // Only proceed and show success if no error was set by the provider
+      final postPaymentState = ref.read(activeBillProvider);
+      if (postPaymentState?.paymentError != null) {
+        throw Exception(postPaymentState!.paymentError);
+      }
+
       final changePaise = amountPaise - remainingPaise;
       final change = changePaise / 100.0;
       if (change > 0) {
@@ -125,12 +139,6 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
       }
 
       if (!mounted) return;
-
-      // Only navigate away if no error was set by the provider
-      final postPaymentState = ref.read(activeBillProvider);
-      if (postPaymentState?.paymentError != null) {
-        throw Exception(postPaymentState!.paymentError);
-      }
       context.go('/checkout');
     } catch (e) {
       if (!mounted) return;
@@ -679,23 +687,7 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
     );
   }
 
-  Widget _buildBrandBadge(String label) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceVariant,
-        borderRadius: BorderRadius.circular(6.r),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Text(
-        label,
-        style: AppTextStyles.labelSmall.copyWith(
-          color: AppColors.textSecondary,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
+
 
 
   Widget _buildSummaryRow(String label, String value, {bool isHighlight = false, Color? color}) {

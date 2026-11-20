@@ -232,6 +232,7 @@ class BillingScreen extends ConsumerWidget {
                 child: PrimaryButton(
                   onPressed: billState.isPaid
                       ? () async {
+                          final tableId = billState.order.tableId;
                           const storage = FlutterSecureStorage();
                           final cashierName = await storage.read(key: 'staff_name') ??
                               ref.read(authProvider).user?.name ??
@@ -255,22 +256,33 @@ class BillingScreen extends ConsumerWidget {
 
                           try {
                             await ref.read(printServiceProvider).printReceipt(request);
-                            ref.read(inactivityServiceProvider).resetTimer();
-                            ref.read(activeTableIdProvider.notifier).state = null;
-                            if (!context.mounted) return;
-                            context.showSuccessSnack('Session settled! Receipt printed.');
-                            context.go('/floor');
-                          } on PrinterException {
-                            ref.read(activeTableIdProvider.notifier).state = null;
-                            if (!context.mounted) return;
-                            context.showSuccessSnack('Session settled! (Printer offline: receipt skipped)');
-                            context.go('/floor');
-                          } catch (e) {
-                            ref.read(activeTableIdProvider.notifier).state = null;
-                            if (!context.mounted) return;
-                            context.showSuccessSnack('Session settled! Table cleared.');
-                            context.go('/floor');
+                          } catch (_) {
+                            // Non-fatal if printer offline or fails
                           }
+
+                          try {
+                            if (tableId.isNotEmpty) {
+                              await ref.read(posTablesProvider.notifier).clearTable(tableId);
+                            }
+                          } catch (e) {
+                            debugPrint('[BillingScreen] Failed to clear table $tableId: $e');
+                          }
+
+                          // Mark orders for this table as completed so liveTableStatusProvider marks it available
+                          final tableOrders = ref.read(ordersProvider).valueOrNull?.where((o) => o.tableId == tableId).toList() ?? [];
+                          for (final o in tableOrders) {
+                            ref.read(ordersProvider.notifier).updateStatus(o.id, OrderStatus.completed);
+                          }
+                          if (billState.order.id.isNotEmpty) {
+                            ref.read(ordersProvider.notifier).updateStatus(billState.order.id, OrderStatus.completed);
+                          }
+
+                          ref.read(inactivityServiceProvider).resetTimer();
+                          ref.read(activeBillProvider.notifier).clear();
+                          ref.read(activeTableIdProvider.notifier).state = null;
+                          if (!context.mounted) return;
+                          context.showSuccessSnack('Session settled! Table cleared.');
+                          context.go('/floor');
                         }
                       : () => context.go('/checkout/payment'),
                   text: billState.isPaid ? 'COMPLETE SESSION' : 'PROCEED TO PAY',

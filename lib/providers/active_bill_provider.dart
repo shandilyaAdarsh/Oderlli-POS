@@ -7,6 +7,7 @@ import 'orders_provider.dart';
 import 'shift_provider.dart';
 import 'inactivity_provider.dart';
 import 'billing_provider.dart';
+import 'table_provider.dart';
 
 /// Tracks the active table being checked out.
 final activeTableIdProvider = StateProvider<String?>((ref) => null);
@@ -21,7 +22,6 @@ final activeTableOrderProvider = Provider<Order?>((ref) {
   // Match by tableId directly (most accurate — avoids the old tableNumber lookup)
   for (final o in orders) {
     if (o.tableId == tableId &&
-        o.status != OrderStatus.served &&
         o.status != OrderStatus.completed &&
         o.status != OrderStatus.cancelled) {
       return o;
@@ -211,29 +211,44 @@ class ActiveBillNotifier extends StateNotifier<ActiveBillState?> {
   Future<void> _fetchFullOrderAndPayments(String orderId, int tableNumber) async {
     try {
       final orderDetail = await _ref.read(orderRepositoryProvider).getOrderDetail(orderId);
+      final currentOrder = state?.order;
+
+      final items = orderDetail.items.isNotEmpty
+          ? orderDetail.items
+          : (currentOrder?.items.isNotEmpty == true ? currentOrder!.items : const <OrderItem>[]);
+
+      final subtotalMinor = orderDetail.subtotalMinor > 0
+          ? orderDetail.subtotalMinor
+          : (currentOrder?.subtotalMinor ?? 0);
+
+      final grandTotalMinor = orderDetail.grandTotalMinor > 0
+          ? orderDetail.grandTotalMinor
+          : (currentOrder?.grandTotalMinor ?? 0);
+
       final fullOrder = Order(
         id: orderDetail.id,
-        tableId: orderDetail.tableId,
-        tableNumber: tableNumber,
-        items: orderDetail.items,
+        tableId: orderDetail.tableId.isNotEmpty ? orderDetail.tableId : (currentOrder?.tableId ?? ''),
+        tableNumber: tableNumber > 0 ? tableNumber : (currentOrder?.tableNumber ?? 0),
+        tableName: currentOrder?.tableName,
+        items: items,
         createdAt: orderDetail.createdAt,
         status: orderDetail.status,
         updatedAt: orderDetail.updatedAt,
-        servedBy: orderDetail.createdBy,
-        discountPercent: orderDetail.discountTotalMinor > 0 && orderDetail.subtotalMinor > 0 
-            ? (orderDetail.discountTotalMinor / orderDetail.subtotalMinor) * 100 
-            : 0.0,
-        taxPercent: orderDetail.taxTotalMinor > 0 && (orderDetail.subtotalMinor - orderDetail.discountTotalMinor) > 0
-            ? (orderDetail.taxTotalMinor / (orderDetail.subtotalMinor - orderDetail.discountTotalMinor)) * 100
+        servedBy: orderDetail.createdBy ?? currentOrder?.servedBy,
+        discountPercent: orderDetail.discountTotalMinor > 0 && subtotalMinor > 0 
+            ? (orderDetail.discountTotalMinor / subtotalMinor) * 100 
+            : (state?.discountPercent ?? 0.0),
+        taxPercent: orderDetail.taxTotalMinor > 0 && (subtotalMinor - orderDetail.discountTotalMinor) > 0
+            ? (orderDetail.taxTotalMinor / (subtotalMinor - orderDetail.discountTotalMinor)) * 100
             : 5.0,
-        notes: orderDetail.orderNotes,
+        notes: orderDetail.orderNotes ?? currentOrder?.notes,
         versionNum: orderDetail.versionNum,
         orderSnapshotId: orderDetail.orderSnapshotId,
-        orderNumber: orderDetail.orderNumber,
-        subtotalMinor: orderDetail.subtotalMinor,
+        orderNumber: orderDetail.orderNumber.isNotEmpty ? orderDetail.orderNumber : currentOrder?.orderNumber,
+        subtotalMinor: subtotalMinor,
         taxTotalMinor: orderDetail.taxTotalMinor,
         discountTotalMinor: orderDetail.discountTotalMinor,
-        grandTotalMinor: orderDetail.grandTotalMinor,
+        grandTotalMinor: grandTotalMinor,
       );
 
       // Verify order ID hasn't changed while request was in-flight
@@ -354,6 +369,7 @@ class ActiveBillNotifier extends StateNotifier<ActiveBillState?> {
   Future<void> addPayment(String method, double amount) async {
     final currentState = state;
     if (currentState == null) return;
+    if (currentState.isSubmittingPayment) return; // Prevent concurrent double-taps
 
     final previousState = currentState;
 
@@ -363,47 +379,70 @@ class ActiveBillNotifier extends StateNotifier<ActiveBillState?> {
       paymentError: () => null,
     );
 
+    final amountMinor = (amount * 100).round();
+    if (amountMinor <= 0) {
+      state = currentState.copyWith(
+        isSubmittingPayment: false,
+        paymentError: () => 'Payment amount must be greater than zero.',
+      );
+      return;
+    }
+
     try {
       final billingService = _ref.read(billingServiceProvider);
       String? targetBillId = currentState.billId;
 
-      if (targetBillId == null) {
-        try {
-          final billResult = await billingService.aggregateOrdersIntoBill(
-            tableId: currentState.order.tableId,
-            orderIds: [currentState.order.id],
-          );
-          targetBillId = (billResult['id'] ?? billResult['bill_id'])?.toString();
-        } catch (e) {
-          if (e is DioException) {
+      // Always synchronize active bill totals (subtotal, tax + service charge, discount) with backend bill
+      try {
+        final billResult = await billingService.aggregateOrdersIntoBill(
+          tableId: currentState.order.tableId,
+          orderIds: [currentState.order.id],
+          taxTotalMinor: currentState.taxPaise + currentState.serviceChargePaise,
+          discountTotalMinor: currentState.discountPaise,
+          grandTotalMinor: currentState.grandTotalPaise,
+        );
+        final returnedId = (billResult['id'] ?? billResult['bill_id'])?.toString();
+        if (returnedId != null && returnedId.isNotEmpty) {
+          targetBillId = returnedId;
+          state = state?.copyWith(billId: targetBillId);
+        }
+      } catch (aggErr) {
+        if (targetBillId == null) {
+          // If aggregation fails, check if table already has an active projection/bill
+          try {
+            final projections = await billingService.fetchTableProjection(currentState.order.tableId);
+            for (final proj in projections) {
+              if (proj is Map) {
+                final bill = proj['bill'];
+                if (bill is Map && bill['id'] != null) {
+                  targetBillId = bill['id'].toString();
+                  state = state?.copyWith(billId: targetBillId);
+                  break;
+                }
+              }
+            }
+          } catch (_) {}
+
+          if (targetBillId == null && aggErr is DioException) {
             rethrow;
           }
         }
       }
 
-      final amountMinor = (amount * 100).round();
       String mappedMethod = method.toLowerCase();
-      if (mappedMethod == 'upi') mappedMethod = 'qr_pay';
+      // Backend /bills/:id/settle requires 'cash' or 'manual'
+      final settleMethod = (mappedMethod == 'cash') ? 'cash' : 'manual';
       
       final paymentId = 'pay-${DateTime.now().millisecondsSinceEpoch}';
 
       if (targetBillId != null && targetBillId.isNotEmpty) {
         await billingService.settleBill(
           billId: targetBillId,
-          paymentMethod: mappedMethod,
+          paymentMethod: settleMethod,
           amountMinor: amountMinor,
         );
       } else {
-        // Direct order payment persistence (/api/v1/orders/:id/payments)
-        final dioClient = _ref.read(dioClientProvider);
-        await dioClient.dio.post(
-          '/api/v1/orders/${currentState.order.id}/payments',
-          data: {
-            'method': mappedMethod,
-            'amount_minor': amountMinor,
-            'idempotency_key': paymentId,
-          },
-        );
+        throw Exception('Unable to locate or aggregate an active bill for this table.');
       }
 
       final newPayment = PaymentRecord(
@@ -440,7 +479,15 @@ class ActiveBillNotifier extends StateNotifier<ActiveBillState?> {
       
       final currentRemaining = state?.amountRemainingPaise ?? 0;
       if (currentRemaining <= 0) {
-        _ref.read(ordersProvider.notifier).updateStatus(currentState.order.id, OrderStatus.served);
+        final tableId = currentState.order.tableId;
+        final tableOrders = _ref.read(ordersProvider).valueOrNull?.where((o) => o.tableId == tableId).toList() ?? [];
+        for (final o in tableOrders) {
+          _ref.read(ordersProvider.notifier).updateStatus(o.id, OrderStatus.completed);
+        }
+        _ref.read(ordersProvider.notifier).updateStatus(currentState.order.id, OrderStatus.completed);
+        if (tableId.isNotEmpty) {
+          _ref.read(posTablesProvider.notifier).clearTable(tableId);
+        }
       }
     } on DioException catch (e) {
       final statusCode = e.response?.statusCode;
@@ -454,7 +501,9 @@ class ActiveBillNotifier extends StateNotifier<ActiveBillState?> {
       }
 
       final serverMsg = e.response?.data is Map
-          ? (e.response!.data['message'] as String?) ?? ''
+          ? (e.response!.data['error'] is Map
+              ? (e.response!.data['error']['message'] as String?) ?? ''
+              : (e.response!.data['message'] as String?) ?? '')
           : '';
 
       String userMessage;

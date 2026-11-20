@@ -33,13 +33,20 @@ class BillingService {
   Future<Map<String, dynamic>> aggregateOrdersIntoBill({
     required String tableId,
     required List<String> orderIds,
+    String? sessionId,
+    int? taxTotalMinor,
+    int? discountTotalMinor,
+    int? grandTotalMinor,
   }) async {
     final response = await _dioClient.dio.post(
       '/api/v1/billing/bills/aggregate',
       data: {
         'tableId': tableId,
         'orderIds': orderIds,
-        'sessionId': null, // Assuming backend handles this if null
+        'sessionId': sessionId,
+        'taxTotalMinor': ?taxTotalMinor,
+        'discountTotalMinor': ?discountTotalMinor,
+        'grandTotalMinor': ?grandTotalMinor,
       },
     );
     _assertSuccess(response);

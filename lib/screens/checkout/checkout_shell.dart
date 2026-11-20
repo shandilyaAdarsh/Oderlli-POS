@@ -131,6 +131,7 @@ class CheckoutShell extends ConsumerWidget {
                     IconButton(
                       onPressed: () {
                         ref.read(activeTableIdProvider.notifier).state = null;
+                        ref.read(activeBillProvider.notifier).clear();
                         context.go('/floor');
                       },
                       icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
@@ -144,7 +145,7 @@ class CheckoutShell extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Table ${order.tableNumber} Receipt',
+                            '${order.displayTableName} Receipt',
                             style: AppTextStyles.titleMedium.copyWith(color: AppColors.textPrimary),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -204,6 +205,7 @@ class CheckoutShell extends ConsumerWidget {
                       IconButton(
                         onPressed: () {
                           ref.read(activeTableIdProvider.notifier).state = null;
+                          ref.read(activeBillProvider.notifier).clear();
                           context.go('/floor');
                         },
                         icon: const Icon(Icons.arrow_back),
@@ -218,7 +220,7 @@ class CheckoutShell extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Table ${order.tableNumber} Receipt',
+                              '${order.displayTableName} Receipt',
                               style: AppTextStyles.titleLarge,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
